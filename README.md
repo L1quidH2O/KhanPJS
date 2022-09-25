@@ -3,6 +3,8 @@ KhanPJS is just Khanacademy's PJS enviroment but optimized and without the need 
 
 Almost every PJS program can run in it. The only limitations being things i intentionally removed.
 
+## CDN
+    https://cdn.jsdelivr.net/gh/L1quidH2O/KhanPJS/build/KhanPJS.min.js
 -------------------------------
 ## HOW TO USE
 ```js
