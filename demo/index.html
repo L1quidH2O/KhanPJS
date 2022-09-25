@@ -614,7 +614,7 @@
         
         function saveCode(){
             if(!localStorageAvailable){
-                popUp("localStorage is not enabled, cannot save code.");
+                popup("LocalStorage", "localStorage is not enabled, cannot save code.");
                 return;
             }
 
@@ -625,7 +625,7 @@
 
         function loadCode(){
             if(!localStorageAvailable){
-                popUp("localStorage is not enabled, cannot load code.");
+                popup("LocalStorage", "localStorage is not enabled, cannot load code.");
                 return;
             }
 
