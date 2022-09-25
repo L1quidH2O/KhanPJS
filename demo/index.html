@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KhanPJS Demo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@300&family=Source+Code+Pro:wght@500&display=swap" rel="stylesheet">
+    <style>
+        :root{
+            --col1: rgb(255, 255, 255);
+            --col2: rgb(0, 0, 0);
+            
+            --background-col: rgb(255, 255, 255);
+
+            --hover-col: rgb(0, 0, 0, 0.1);
+            --main-col: rgb(111, 0, 255);
+            --top-col: rgb(255, 255, 255);
+
+            --error-col: rgb(200, 20, 20);
+            --error-back: rgb(255, 220, 220);
+            --error-border: rgb(255, 200, 200);
+
+            --info-col: rgb(20, 20, 20);
+            --info-back: rgb(255, 255, 255);
+            --info-border: rgb(230, 230, 230);
+
+            --warn-col: rgb(80, 80, 0);
+            --warn-back: rgb(255, 250, 200);
+            --warn-border: rgb(230, 230, 130);
+            --warn-icon: rgb(255, 150, 90);
+
+            --loc-col: rgb(0, 0, 255);
+
+            --context-menu-col: rgb(252, 252, 252);
+            --context-menu-divider: rgb(240, 240, 240);
+        }
+
+        :root.darkMode{
+            --col1: rgb(255, 255, 255);
+            --col2: rgb(240, 240, 240);
+
+            --background-col: rgb(10, 10, 10);
+
+            --hover-col: rgb(0, 0, 0, 0.1);
+            --main-col: rgb(111, 0, 255);
+            --top-col: rgb(20, 20, 20);
+
+            --error-col: rgb(255, 91, 91);
+            --error-back: rgb(78, 0, 0);
+            --error-border: rgb(135, 0, 0);
+
+            --info-col: rgb(200, 200, 200);
+            --info-back: transparent;
+            --info-border: rgb(30, 30, 30);
+
+            --warn-col: rgb(255, 207, 120);
+            --warn-back: rgb(62, 56, 0);
+            --warn-border: rgb(112, 112, 0);
+            --warn-icon: rgb(255, 203, 90);
+
+            --loc-col: rgb(89, 150, 249);
+
+            --context-menu-col: rgb(25, 25, 25);
+            --context-menu-divider: rgb(80, 80, 80);
+        }
+        :root.darkMode img{
+            filter:invert(1);
+        }
+
+        html,body{
+            margin: 0;
+            width: 100%;
+            height: 100%;
+            font-family: 'Segoe UI', Tahoma, 'Noto Sans', Geneva, Verdana, sans-serif;
+            background-color: var(--background-col);
+        }
+        .wrapper{
+            width: 100%;
+            height: 100%;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+        }
+    </style>
+    <style>
+        .top{
+            display: flex;
+            box-sizing: border-box;
+            user-select: none;
+            font-size: 14px;
+            z-index: 100;
+            background-color: var(--top-col);
+            color: var(--col2);
+        }
+        .top > div{
+            width: 100%;
+            display: flex;
+            align-items: center;
+        }
+        .top > div > div{
+            flex-shrink: 0;
+        }
+        .top-button{
+            height: 100%;
+            padding: 5px 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
+        }
+        .top-button > img{
+            width: 100%;
+            height: 15px;
+        }
+        .top-button:hover{
+            background: var(--hover-col);
+        }
+        .title{
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+    <style>
+        .middle{
+            width:100%;
+            height:100%;
+            display: flex;
+            min-height: 0;
+        }
+        #editor {
+            width: 100%;
+            height: 100%;
+        }
+        .output{
+            display:flex;
+            flex-direction: column;
+            box-shadow: 0 0 20px rgba(0,0,0,0.2);
+            z-index: 1;
+            flex-shrink: 2;
+        }
+        #KhanPJS{
+            max-width: 50vw;
+            max-height: 600px;
+        }
+        .stats{
+            width: 100%;
+            height: 100%;
+            font-family: consolas, lucida console, 'Source Code Pro', courier new, monospace;
+            overflow: auto;
+        }
+        #stats{
+            width: 100%;
+            flex-shrink: 0;
+            
+        }
+        .console{
+            font-size: 12px;
+            box-sizing: border-box;
+        }
+        .console *::selection{
+            color: var(--col1);
+            background-color: var(--main-col);
+        }
+        .error-icon{
+            content: '';
+            display: inline-block;
+            width: 7px;
+            height: 7px;
+            margin-top: 3px;
+            margin-right: 5px;
+            border-radius: 10px;
+            background-color: var(--error-col);
+            flex-shrink: 0;
+        }
+        .console-loc{
+            color: var(--loc-col);
+            text-decoration: underline;
+            cursor: pointer;
+        }
+        .error-msg{
+            width:100%;
+            cursor: default;
+        }
+        .error{
+            color: var(--error-col);
+            background-color: var(--error-back);
+            padding: 5px 10px;
+            display: flex;
+            border-top: 1px solid var(--error-border);
+            border-bottom: 1px solid var(--error-border);
+        }
+
+        .info-icon{
+            content: '';
+            display: inline-block;
+            width: 7px;
+            height: 7px;
+            margin-top: 3px;
+            margin-right: 5px;
+        }
+        .info-msg{
+            width:100%;
+            cursor: default;
+        }
+        .info{
+            color: var(--info-col);
+            background-color: var(--info-back);
+            padding: 5px 10px;
+            display: flex;
+            border-top: 1px solid var(--info-border);
+            border-bottom: 1px solid var(--info-border);
+        }
+
+        .warn-icon{
+            content: '';
+            display: inline-block;
+            width: 7px;
+            height: 7px;
+            margin-top: 3px;
+            margin-right: 5px;
+            border-radius: 10px;
+            background-color: var(--warn-icon);
+            flex-shrink: 0;
+        }
+        .warn-msg{
+            width:100%;
+            cursor: default;
+        }
+        .warn{
+            color: var(--warn-col);
+            background-color: var(--warn-back);
+            padding: 5px 10px;
+            display: flex;
+            border-top: 1px solid var(--warn-border);
+            border-bottom: 1px solid var(--warn-border);
+        }
+    </style>
+    <style>
+        .has-context-menu{
+            position: relative;
+        }
+        .has-context-menu:hover .context-menu{
+            display: block;
+        }
+        .context-menu:before{
+            content:"";
+            display: block;
+            height:100%;
+        }
+        .context-menu{
+            display: none;
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            transform: translateY(100%);
+            min-width: 300px;
+            background-color: var(--context-menu-col);
+            box-shadow: 0 0 10px 2px rgba(0,0,0,0.1);
+            font-size: 12px;
+            padding: 5px 0;
+        }
+        .context-menu.right{
+            left: auto;
+            right: 0;
+        }
+
+        .context-menu-button{
+            cursor: pointer;
+            padding: 5px 20px;
+            display: flex;
+            white-space: nowrap;
+        }
+
+        .context-menu-button:hover{
+            background-color: var(--main-col);
+            color: var(--col1)
+        }
+
+        .context-menu-divider{
+            margin: 5px auto;
+            width: 90%;
+            border: 1px solid var(--context-menu-divider);
+        }
+
+        .context-menu-shortcut{
+            float: right;
+            margin-left: auto;
+            padding-left: 20px;
+        }
+
+    </style>
+    <style>
+        @media screen and (max-width: 500px) {
+            .top{
+                flex-direction: column;
+            }
+            .middle{
+                flex-direction: column;
+            }
+            .output{
+                flex-direction: row;
+            }
+        }
+    </style>
+    <style>
+        .popup{
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 200;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .popup-box{
+            background-color: var(--background-col);
+            min-width: 40%;
+            max-width: 60%;
+            height: fit-content;
+            max-height: 80%;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            padding-bottom: 20px;
+        }
+
+        .popup-box-wrapper{
+            width: 100%;
+            height: 100%;
+            padding: 10px 50px;
+            text-align: center;
+            box-sizing: border-box;
+            overflow: auto;
+        }
+
+        .popup-box-top{
+            font-size: 13px;
+            padding: 5px 10px;
+            display: flex;
+            height: fit-content;
+            flex-shrink: 0;
+            user-select: none;
+            color: var(--col2);
+        }
+        .popup-box-top > div:nth-child(1){
+            width: 100%;
+        }
+        .popup-box-close::before,
+        .popup-box-close::after {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            content: '';
+            width: 15px;
+            height: 1px; /* cross thickness */
+            background-color: var(--col2);
+        }
+
+        .popup-box-close::before {
+            transform: rotate(45deg);
+        }
+
+        .popup-box-close::after {
+            transform: rotate(-45deg);
+        }
+        .popup-box-close{
+            position: relative;
+            width: 15px;
+            cursor: pointer;
+        }
+
+        .popup-box-txt{
+            color: var(--col2);
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            word-break: break-word;
+        }
+
+        .popup-box-txt::selection{
+            color: var(--col1);
+            background-color: var(--main-col);
+        }
+
+    </style>
+</head>
+<body>
+    <div class="wrapper">
+        <div class="top">
+            <div>
+                <div class="top-button" id="Github" title="Open Github"><img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg" onerror="this.style.display='none'; this.parentNode.textContent='Github'"></div>
+                <div class="top-button has-context-menu">
+                    Options
+                    <div class="context-menu">
+                        <div class="context-menu-button" id="Toggle_LoopProtect">Toggle LoopProtect</div>
+                        <div class="context-menu-divider"></div>
+                        <div class="context-menu-button" id="Save_Code">Save Code <div class="context-menu-shortcut">Ctrl+S</div></div>
+                        <div class="context-menu-button" id="Load_Saved_Code">Load Saved Code</div>
+                        <div class="context-menu-button" id="Clear_Saved_Code">Clear Saved Code</div>
+                    </div>
+                </div>
+                <div class="top-button has-context-menu">View
+                    <div class="context-menu">
+                        <div class="context-menu-button" id="Beautify_Code">Beautify Code <div class="context-menu-shortcut">Shift+Alt+F</div></div>
+                        <div class="context-menu-divider"></div>
+                        <div class="context-menu-button" id="Toggle_Theme">Toggle Theme</div>
+                        <div class="context-menu-button" id="Toggle_Word_Wrap">Toggle Word Wrap</div>
+                        <div class="context-menu-button" id="Toggle_Print_Margin">Toggle Print Margin</div>
+                    </div>
+                </div>
+                <div class="top-button has-context-menu">
+                    Run
+                    <div class="context-menu">
+                        <div class="context-menu-button" id="Toggle_Live_Editor">Toggle Live Editor</div>
+                        <div class="context-menu-button" id="Run_Code">
+                            Run Code
+                            <div class="context-menu-shortcut">F5</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="title">KhanPJS Demo</div>
+            <div style="justify-content: end;">
+                <div class="top-button">JSHint</div>
+                <div class="top-button has-context-menu">Console
+                    <div class="context-menu right">
+                        <div class="context-menu-button" id="Clear_Console">Clear Console <div class="context-menu-shortcut">F4</div></div>
+                        <div class="context-menu-button" id="Auto_Scroll">Auto Scroll</div>
+                    </div>
+                </div>
+                <div class="top-button has-context-menu">Fullscreen
+                    <div class="context-menu right">
+                        <div class="context-menu-button" id="View_Demo_in_Fullscreen">View Demo in Fullscreen</div>
+                        <div class="context-menu-button" id="View_PJS_in_Fullscreen">View PJS in Fullscreen</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="middle">
+            <div id="editor"></div>
+            <div class="output">
+                <canvas id="KhanPJS"></canvas>
+                <div class="stats">
+                    <canvas id="stats" height="100"></canvas>
+                    <div class="console"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="popup">
+        <div class="popup-box">
+            <div class="popup-box-top">
+                <div class="popup-box-name">Popup</div>
+                <div class="popup-box-close" title="Close Popup"></div>
+            </div>
+            <div class="popup-box-wrapper">
+                <div class="popup-box-txt">siknsikn</div>
+            </div>
+        </div>
+    </div>
+</body>
+<script src="https://cdn.jsdelivr.net/gh/ajaxorg/ace-builds/src-min/ace.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/ajaxorg/ace-builds/src-min/mode-javascript.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/ajaxorg/ace-builds/src-min/theme-one_dark.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/ajaxorg/ace-builds/src-min/ext-language_tools.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/ajaxorg/ace-builds/src-min/ext-beautify.js"></script>
+<script src="../build/KhanPJS.min.js"></script>
+<script>
+    // code is thrown in anonymous function so top scope doesnt get dirtied and confuse user, ace editor fills window scope with few things but i dont think it would be that big of a problem
+    (function(){
+        var beautify = ace.require("ace/ext/beautify");
+        var editor = ace.edit("editor");
+        editor.session.setMode("ace/mode/javascript")
+        editor.setOptions({
+            indentedSoftWrap: false,      //idk why anyone would ever want this enabled
+            enableBasicAutocompletion: true,
+            enableLiveAutocompletion: true
+        })
+        editor.setTheme("ace/theme/textmate")
+
+        
+        var pjs = new KhanPJS({
+            canvas: document.getElementById("KhanPJS")
+        })
+
+        var stats = document.getElementById("stats");
+        var ctx = stats.getContext("2d");
+        var barWidth = 3;
+        var graphTop = 30;
+        var prevFPS, prevMB;
+        var darkMode = false;
+
+        setInterval(()=>{
+            var fpsR = (stats.height-graphTop)/60;
+            var mbR = (stats.height-graphTop)/(performance.memory.jsHeapSizeLimit>>>20);
+            let fps = pjs.processing.__frameRate|0;
+            let mb = performance.memory.usedJSHeapSize>>>20;
+            let half_width = Math.round(stats.width/2);
+            stats.width = stats.offsetWidth;
+            
+            
+            if(prevMB){ctx.putImageData(prevMB, half_width-barWidth, graphTop)}
+            ctx.clearRect(0, 0, half_width, stats.height);
+            if(prevFPS){ctx.putImageData(prevFPS, -barWidth, graphTop)}
+
+            ctx.font = "13px 'Segoe UI', Tahoma, 'Noto Sans', Geneva, Verdana, sans-serif"
+            ctx.fillStyle = darkMode ? "rgb(220, 220, 220)" : "black";
+            ctx.fillText(fps + " FPS", 5, 15)
+            ctx.fillText(mb + " MB", half_width + 5, 15)
+            ctx.fillStyle = `rgb(${(1-fps/60)*255}, ${Math.min(fps, 30)/30*255}, 0)`;
+            ctx.fillRect(half_width-barWidth, stats.height-fps*fpsR, barWidth, fps*fpsR)
+            ctx.fillStyle = `rgb(111, 0, 255)`;
+            ctx.fillRect(stats.width-barWidth, stats.height-mb*mbR, barWidth, mb*mbR)
+            prevFPS = ctx.getImageData(0, graphTop, half_width, stats.height-graphTop);
+            prevMB = ctx.getImageData(half_width, graphTop, half_width, stats.height-graphTop);
+        }, 100)
+        
+        
+        
+        var log = {
+            ele: document.querySelector(".console"),
+            autoScroll: false,
+            clear: function(){
+                log.ele.innerHTML = "";
+            },
+            create: function(type, txt, row, col){
+                var w = document.createElement("div");
+                w.classList.add(type);
+                
+                var i = document.createElement("div");
+                i.classList.add(type + "-icon");
+                
+                var m = document.createElement("div");
+                m.classList.add(type + "-msg");
+                m.textContent = txt;
+                
+                var l = document.createElement("div");
+                l.classList.add("console-loc");
+                if(row !== undefined){
+                    l.textContent = row + (col !== undefined ? ":" + col : "");
+                    l.onclick = ()=>editor.gotoLine(row, col);
+                }
+                
+                w.appendChild(i);
+                w.appendChild(m);
+                w.appendChild(l);
+                log.ele.appendChild(w);
+
+                if(log.autoScroll){
+                    let s = log.ele.parentNode;
+                    s.scrollTop = s.scrollHeight;
+                }
+            },
+            info: function(txt, row, col){
+                log.create("info", txt, row);
+            },
+            error: function(txt, row, col){
+                if(txt.hasOwnProperty("infiniteLoopNodeType")){  //is infinite loop error
+                    log.create("error", "LoopProtect Error: " + txt.infiniteLoopNodeType, txt.row + 1);
+                    var l = liveEditorRun.isLive;
+                    liveEditorRun.isLive = false;
+                    setTimeout(()=>liveEditorRun.isLive = l, 5000); //give 5 seconds for user to fix inifnite loop
+                }
+                else if(txt.hasOwnProperty("lineNumber")){  //is KhanPJS syntax error
+                    log.create("error", txt, txt.lineNumber, txt.column);
+                }
+                else{log.create("error", txt, row, col); }
+            },
+            warn: function(txt, row, col){
+                log.create("warn", txt, row, col);
+            }
+        }
+
+        log.info("Welcome to KhanPJS Demo")
+        log.info("This console area is only for PJS related errors and KhanPJS related info and warnings. console.log() and debug() do not print here.")
+        
+        var localStorageAvailable = function(){
+            try {
+                localStorage.setItem('wow', 'wow');
+                localStorage.removeItem('wow');
+                return true;
+            } catch(e) {
+                log.warn("LocalStorage is not enabled. you will not be able to save code");
+                return false;
+            }
+        }();
+
+        function runCode(onError){
+            pjs.runCode(editor.getValue(), e=>{
+                log.error(e);
+                if(onError){ onError(e); }
+                throw e;
+            });
+        }
+
+        function popUp(txt){
+
+        }
+        
+        function saveCode(){
+            if(!localStorageAvailable){
+                popUp("localStorage is not enabled, cannot save code.");
+                return;
+            }
+
+            let c = editor.getValue();
+            localStorage.setItem("KhanPJS_Code", c);
+            log.info(`Saved Code to LocalStorage (${(new TextEncoder().encode(c).length/1024).toFixed(3)} KB)`)
+        }
+
+        function loadCode(){
+            if(!localStorageAvailable){
+                popUp("localStorage is not enabled, cannot load code.");
+                return;
+            }
+
+            let c = localStorage.getItem("KhanPJS_Code");
+            if(c !== null){ editor.setValue(c); }
+            log.info(`Loaded Code (${(c !== null ? new TextEncoder().encode(c).length/1024 : 0).toFixed(3)} KB)`)
+        }
+
+        function clearCode(){
+            localStorage.removeItem("KhanPJS_Code");
+            log.info(`Cleared Code from LocalStorage`);
+        }
+
+        function beautifyCode(){
+            beautify.beautify(editor.session);
+        }
+
+        var liveEditorRun =  function(){
+            if(liveEditorRun.isLive){
+                try{ runCode(); }catch(e){}
+            }
+        };
+
+        function popup(title, txt){
+            document.querySelector(".popup-box-name").textContent = title;
+            document.querySelector(".popup-box-txt").textContent = txt;
+            document.querySelector(".popup").style.display = "flex";
+        }
+
+        //--------- context menu stuff ---------
+        document.querySelector("#Github").onclick = ()=>{
+            window.open("github url")
+        }
+
+        document.querySelector("#Toggle_LoopProtect").onclick = ()=>{
+            let l = pjs.enableLoopProtect = !pjs.enableLoopProtect;
+            log.info((l ? "Enabled" : "Disabled") + " LoopProtect");
+            if(liveEditorRun.isLive && !l){
+                log.warn("Disabling LoopProtect while Live Editor is enabled is not recommended. High risk of accidental infinite loops.")
+            }
+        }
+        document.querySelector("#Save_Code").onclick = ()=>saveCode();
+        document.querySelector("#Load_Saved_Code").onclick = ()=>loadCode();
+        document.querySelector("#Clear_Saved_Code").onclick = ()=>clearCode();
+
+        document.querySelector("#Beautify_Code").onclick = ()=>beautifyCode();
+        document.querySelector("#Toggle_Theme").onclick = ()=>{
+            document.querySelector(":root").classList.toggle("darkMode");
+            darkMode = !darkMode;
+            editor.setTheme("ace/theme/" + (darkMode ? "one_dark" : "textmate"))
+        };
+        document.querySelector("#Toggle_Word_Wrap").onclick = ()=>{
+            let w = !editor.session.getUseWrapMode();
+            editor.session.setUseWrapMode(w);
+            log.info((w ? "Enabled" : "Disabled") + " Word Wrap");
+        };
+        document.querySelector("#Toggle_Print_Margin").onclick = ()=>{
+            let w = !editor.getShowPrintMargin();
+            editor.setShowPrintMargin(w);
+            log.info((w ? "Enabled" : "Disabled") + " Print Margin");
+        };
+        
+        document.querySelector("#Toggle_Live_Editor").onclick = ()=>{
+            if(liveEditorRun.isLive){
+                liveEditorRun.isLive = false;
+                editor.off("change", liveEditorRun);
+                log.info("Disabled Live Editor");
+                if(!pjs.enableLoopProtect){
+                    log.warn("Enabling Live Editor while LoopProtect is disabled is not recommended. High risk of accidental infinite loops.");
+                }
+            }
+            else{
+                liveEditorRun.isLive = true;
+                editor.on("change", liveEditorRun);
+                log.info("Enabled Live Editor");
+            }
+        }
+        document.querySelector("#Run_Code").onclick = ()=>runCode();
+
+        document.querySelector("#Clear_Console").onclick = ()=>log.clear();
+        document.querySelector("#Auto_Scroll").onclick = ()=>{
+            let w = log.autoScroll = !log.autoScroll;
+            log.info((w ? "Enabled" : "Disabled") + " Auto Scroll");
+        }
+        
+        document.querySelector("#View_Demo_in_Fullscreen").onclick = ()=>{
+            fetch("https://www.khanacademy.org/api/internal/scratchpads/0000000000000000?projection={%22revision%22:{%22code%22:1}}").then(r=>r.json()).then(r=>{
+                let w = window.open();
+                w.document.open();
+                w.document.write(r.revision.code);
+                w.document.close();
+            })
+        };
+
+        document.querySelector("#View_PJS_in_Fullscreen").onclick = ()=>{
+            log.error("I havent made fullscreen PJS and i dont really want to tbh");
+        };
+
+        document.querySelector(".popup-box-close").onclick = ()=>{
+            document.querySelector(".popup").style.display = "none";
+        }
+
+        window.addEventListener("keydown", e=>{
+            if(e.target === pjs.canvas){return;}
+
+            let preventDefault = true;
+            try{
+                switch(e.keyCode){
+                    case 116:   //F5
+                        runCode(()=>e.preventDefault());
+                    break;
+                    case 115:   //F4
+                        log.clear();
+                    break;
+                    case 83:    //S
+                        if(e.ctrlKey){
+                            saveCode();
+                            break;
+                        }
+                    default:
+                        preventDefault = false;
+                }
+            }
+            catch(err){
+                e.preventDefault();
+                throw err;
+            }
+
+            if(preventDefault){e.preventDefault();}
+        })
+
+        editor.commands.addCommand({
+            name: 'myCommand',
+            bindKey: {
+                win: 'Shift-Alt-F',
+                mac: 'Shift-Alt-F'
+            },
+            exec: ()=>beautifyCode(),
+            readOnly: true
+        })
+        
+        if(window.location.href === "https://www.kasandbox.org" && window.innerWidth <= 600){
+            popup("Fullscreen", 'This program is better in fullscreen.\nClick the "Fullscreen" dropdown at the top right then click "View Demo in Fullscreen"')
+        }
+    })();
+</script>
+</html>
