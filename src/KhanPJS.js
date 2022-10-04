@@ -6,8 +6,13 @@ import { PJSCodeInjector } from "./PJSCodeInjector.js";
 class KhanPJS {
     code = "";
 
-    constructor(options) {
-        this.canvas = options.canvas || document.createElement("canvas");
+    constructor(options = {}) {
+        if (options.canvas) this.canvas = options.canvas;
+        else {
+            this.canvas = document.createElement("canvas");
+            this.canvas.width = 400;
+            this.canvas.height = 400;
+        }
         this.DUMMY = function () { }
         this.processing = new Processing(this.canvas, instance => instance.draw = this.DUMMY);
         this.resourceCache = new PJSResourceCache({
@@ -32,7 +37,7 @@ class KhanPJS {
     }
 
     prepProcessing() {
-        this.processing.size(400, 400);
+        this.processing.size(this.canvas.width, this.canvas.height);
         this.processing.background(255, 255, 255);
         this.processing.frameRate(30);
         this.processing.angleMode = "degrees";
@@ -50,12 +55,12 @@ class KhanPJS {
         }
     }
 
-    runCode(code, errorCallback) {
+    runCode(code = document.querySelector('script[type=pjs]')?.textContent, errorCallback = console.error) {
         this.code = code;
         return this.restart(errorCallback);
     }
 
-    restart(errorCallback) {
+    restart(errorCallback = console.error) {
         this.resetGlobals();
         this.injector.restart();
         try{
