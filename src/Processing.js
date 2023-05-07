@@ -1,15 +1,5 @@
-
-var Processing = function (window, document, Math, undef) {
+var Processing = function (window, document, Math) {
     var nop = function () { };
-
-    var debug = (function () {
-        if ("console" in window) {
-            return function (msg) {
-                window.console.log('Processing.js: ' + msg);
-            };
-        }
-        return nop();
-    }());
 
     var ajax = function (url) {
         var xhr = new XMLHttpRequest();
@@ -23,38 +13,6 @@ var Processing = function (window, document, Math, undef) {
         if (xhr.status !== 200 && xhr.status !== 0) { throw ("XMLHttpRequest failed, status code " + xhr.status); }
         return xhr.responseText;
     };
-
-    var isDOMPresent = true;
-
-    // Typed Arrays: fallback to WebGL arrays or Native JS arrays if unavailable
-    function setupTypedArray(name, fallback) {
-        // Check if TypedArray exists, and use if so.
-        if (name in window) {
-            return window[name];
-        }
-
-        // Check if WebGLArray exists
-        if (typeof window[fallback] === "function") {
-            return window[fallback];
-        }
-
-        // Use Native JS array
-        return function (obj) {
-            if (obj instanceof Array) {
-                return obj;
-            }
-            if (typeof obj === "number") {
-                var arr = [];
-                arr.length = obj;
-                return arr;
-            }
-        };
-    }
-
-    var Float32Array = setupTypedArray("Float32Array", "WebGLFloatArray"),
-        Int32Array = setupTypedArray("Int32Array", "WebGLIntArray"),
-        Uint16Array = setupTypedArray("Uint16Array", "WebGLUnsignedShortArray"),
-        Uint8Array = setupTypedArray("Uint8Array", "WebGLUnsignedByteArray");
 
     /* Browsers fixes end */
 
@@ -380,7 +338,7 @@ var Processing = function (window, document, Math, undef) {
         if (obj.hashCode instanceof Function) {
             return obj.hashCode();
         }
-        if (obj.$id === undef) {
+        if (obj.$id === undefined) {
             obj.$id = ((Math.floor(Math.random() * 0x10000) - 0x8000) << 16) | Math.floor(Math.random() * 0x10000);
         }
         return obj.$id;
@@ -649,28 +607,15 @@ var Processing = function (window, document, Math, undef) {
     };
 
     // Unsupported Processing File and I/O operations.
-    (function (Processing) {
-        var unsupportedP5 = ("open() createOutput() createInput() BufferedReader selectFolder() " +
-            "dataPath() createWriter() selectOutput() beginRecord() " +
-            "saveStream() endRecord() selectInput() saveBytes() createReader() " +
-            "beginRaw() endRaw() PrintWriter delay()").split(" "),
-            count = unsupportedP5.length,
-            prettyName,
-            p5Name;
-
-        function createUnsupportedFunc(n) {
-            return function () {
-                throw "Processing.js does not support " + n + ".";
-            };
+    [
+        "open()", "createOutput()", "createInput()", "BufferedReader", "selectFolder()", "dataPath()", "createWriter()",
+        "selectOutput()", "beginRecord()", "saveStream()", "endRecord()", "selectInput()", "saveBytes()", "createReader()",
+        "beginRaw()", "endRaw()", "PrintWriter", "delay()"
+    ].map(r=>{
+        defaultScope[r.replace("()", "")] = function(){
+            throw "Processing.js does not support " + r + ".";
         }
-
-        while (count--) {
-            prettyName = unsupportedP5[count];
-            p5Name = prettyName.replace("()", "");
-
-            Processing[p5Name] = createUnsupportedFunc(prettyName);
-        }
-    }(defaultScope));
+    });
 
     // screenWidth and screenHeight are shared by all instances.
     // and return the width/height of the browser's viewport.
@@ -690,99 +635,48 @@ var Processing = function (window, document, Math, undef) {
     };
 
     var addInstance = function (processing) {
-        if (processing.externals.canvas.id === undef || !processing.externals.canvas.id.length) {
+        if (processing.externals.canvas.id === undefined || !processing.externals.canvas.id.length) {
             processing.externals.canvas.id = "__processing" + processingInstances.length;
         }
         processingInstanceIds[processing.externals.canvas.id] = processingInstances.length;
         processingInstances.push(processing);
     };
 
-    ////////////////////////////////////////////////////////////////////////////
-    // LRUCache.JS START
-    ////////////////////////////////////////////////////////////////////////////
 
+    
     /**
-    * This is a Least Recently Used Cache
-    *
-    * When the max size is reached, then the least recently used item is dropped.
-    *
-    * This is tracked by having a "use index", which is a number indicating how
-    * recently a given item was accessed. The closer the "use index" is to
-    * "mostRecent", the more recently is was used.
-    *
-    * When an item is accessed (via .get()) it's "use index" gets updated to be
-    * the new "most recent".
+    * PFontCache replaces the LRUCache (Least Recently Used Cache) since it was only
+    * used for PFont, it functions the same exact way but better.
+    * 
+    * The item least used in the cache will be deleted when maxSize is reached.
     */
-
-    function LRUCache(maxSize) {
-        this.maxSize = maxSize;
-        this.size = 0;
-        this.cache = {}; // key => val
-        this.useIndex = {}; // use index => key
-        this.useReverse = {}; // key => use index
-        // this will be incremented to 0 for the first item added, making
-        // leastRecent === mostRecent
-        this.mostRecent = -1;
-        this.leastRecent = 0;
-    }
-
-    /**
-      * Get a value from the cache, returning undefined for an unknown key
-      */
-    LRUCache.prototype.get = function (key) {
-        key = key + '';
-        if (!this.cache[key]) {
-            return;
+    class PFontCache{
+        maxSize;
+        map = new Map();
+        used = [];
+        constructor(maxSize){
+            this.maxSize = maxSize;
         }
-        this._makeMostRecent(key);
-        return this.cache[key];
-    };
-
-    /**
-      * Set a value in the cache. If the max size is reached, the least recently
-      * used item will be popped off.
-      */
-    LRUCache.prototype.set = function (key, val) {
-        key = key + '';
-        if (!this.cache[key]) {
-            this.size += 1;
-        }
-        this.cache[key] = val;
-        this._makeMostRecent(key);
-
-        if (this.size > this.maxSize) {
-            this._pop();
-        }
-    };
-
-    LRUCache.prototype._makeMostRecent = function (key) {
-        var current = this.useReverse[key];
-        if (current === this.mostRecent) {
-            return;
-        } else if (current) {
-            delete this.useIndex[current];
-        }
-
-        this.mostRecent += 1;
-        var newIndex = this.mostRecent;
-        this.useIndex[newIndex] = key;
-        this.useReverse[key] = newIndex;
-    }
-
-    LRUCache.prototype._pop = function () {
-        while (this.leastRecent < this.mostRecent) {
-            var oldKey = this.useIndex[this.leastRecent];
-            if (!oldKey) {
-                this.leastRecent += 1;
-                continue;
+    
+        set(key, val){
+            key+='';
+            this.map.set(key, val);
+            this.used.push(key);
+    
+            if(this.used.length > this.maxSize){
+                this.map.delete(this.used.shift());
             }
-
-            delete this.useIndex[this.leastRecent];
-            delete this.useReverse[oldKey];
-            delete this.cache[oldKey];
-            this.leastRecent += 1;
-            this.size -= 1;
-            return;
+        }
+    
+        get(key){
+            key+='';
+    
+            if(!this.map.has(key)){return;}
+    
+            const used = this.used;
+            used[used.length-1] = used.splice(used.indexOf(key),1)[0];  //send to last index
+    
+            return this.map.get(key);
         }
     }
 
@@ -795,230 +689,137 @@ var Processing = function (window, document, Math, undef) {
      * placement. Currently this function computes the ascent, descent and leading
      * (from "lead", used for vertical space) values for the currently active font.
      */
-    function computeFontMetrics(pfont) {
-        var f = pfont.getCSSDefinition(pfont.size + "px", "normal");
-
-        var ctx = document.createElement("canvas").getContext('2d', { alpha: false });
-        ctx.font = f;
-
-        var protrusions = "dbflkhyjqpg";
-
-        var b = ctx.measureText(protrusions);
-
-        pfont.context2d = ctx;  //only used for measureText
-        pfont.ascent = b.actualBoundingBoxAscent;
-        pfont.descent = b.actualBoundingBoxDescent;
-
-        var leadDiv = document.createElement("div");
+    var computeFontMetrics = (function(){
+        const ctx = document.createElement("canvas").getContext('2d', { alpha: false });
+        const leadDiv = document.createElement("div");
         leadDiv.style.all = "unset !important";
         leadDiv.style.position = "absolute !important";
         leadDiv.style.opacity = 0;
-        leadDiv.style.font = f;
-        leadDiv.innerHTML = protrusions + "<br/>" + protrusions;
 
-        document.body.appendChild(leadDiv);
+        const protrusions = "dbflkhyjqpg";
 
-        var leadDivHeight = leadDiv.clientHeight;
-        if (leadDivHeight >= pfont.size * 2) {
-            pfont.leading = Math.round(leadDivHeight / 2);
-        }
+        return function(pfont){
+            var f = pfont.getCSSDefinition(pfont.size + "px", "normal");
 
-        document.body.removeChild(leadDiv);
-    }
+            ctx.font = f;
 
-    /*
-    function computeFontMetrics(pfont) {
-      var emQuad = 250,
-          correctionFactor = pfont.size / emQuad,
-          canvas = document.createElement("canvas");
-      canvas.width = 2*emQuad;
-      canvas.height = 2*emQuad;
-      canvas.style.opacity = 0;
-      var cfmFont = pfont.getCSSDefinition(emQuad+"px", "normal"),
-          ctx = canvas.getContext("2d");
-      ctx.font = cfmFont;
-      pfont.context2d = ctx;
-  
-      // Size the canvas using a string with common max-ascent and max-descent letters.
-      // Changing the canvas dimensions resets the context, so we must reset the font.
-      var protrusions = "dbflkhyjqpg";
-      canvas.width = ctx.measureText(protrusions).width;
-      ctx.font = cfmFont;
-  
-      // for text lead values, we meaure a multiline text container.
-      var leadDiv = document.createElement("div");
-      leadDiv.style.position = "absolute";
-      leadDiv.style.opacity = 0;
-      leadDiv.style.fontFamily = '"' + pfont.name + '"';
-      leadDiv.style.fontSize = emQuad + "px";
-      leadDiv.innerHTML = protrusions + "<br/>" + protrusions;
-      document.body.appendChild(leadDiv);
-  
-      var w = canvas.width,
-          h = canvas.height,
-          baseline = h/2;
-  
-      // Set all canvas pixeldata values to 255, with all the content
-      // data being 0. This lets us scan for data[i] != 255.
-      ctx.fillStyle = "white";
-      ctx.fillRect(0, 0, w, h);
-      ctx.fillStyle = "black";
-      ctx.fillText(protrusions, 0, baseline);
-      var pixelData = ctx.getImageData(0, 0, w, h).data;
-  
-      // canvas pixel data is w*4 by h*4, because R, G, B and A are separate,
-      // consecutive values in the array, rather than stored as 32 bit ints.
-      var i = 0,
-          w4 = w * 4,
-          len = pixelData.length;
-  
-      // Finding the ascent uses a normal, forward scanline
-      while (++i < len && pixelData[i] === 255) { //why not just i += 4 ??? :)
-        nop();
-      }
-      var ascent = Math.round(i / w4);
-  
-      // Finding the descent uses a reverse scanline
-      i = len - 1;
-      while (--i > 0 && pixelData[i] === 255) {
-        nop();
-      }
-      var descent = Math.round(i / w4);
-  
-      // set font metrics
-      pfont.ascent = correctionFactor * (baseline - ascent);
-      pfont.descent = correctionFactor * (descent - baseline);
-  
-      // Then we try to get the real value from the browser
-      if (document.defaultView.getComputedStyle) {
-        var leadDivHeight = document.defaultView.getComputedStyle(leadDiv,null).getPropertyValue("height");
-        leadDivHeight = correctionFactor * leadDivHeight.replace("px","");
-        if (leadDivHeight >= pfont.size * 2) {
-          pfont.leading = Math.round(leadDivHeight/2);
-        }
-      }
-      document.body.removeChild(leadDiv);
-    }
-    */
+            var b = ctx.measureText(protrusions);
 
-    // Defines system (non-SVG) font.
-    function PFont(name, size) {
-        // according to the P5 API, new PFont() is legal (albeit completely useless)
-        if (name === undef) {
-            name = "";
-        }
-        this.name = name;
-        if (size === undef) {
-            size = 0;
-        }
-        this.size = size;
-        this.glyph = false;
-        this.ascent = 0;
-        this.descent = 0;
-        // For leading, the "safe" value uses the standard TEX ratio
-        this.leading = 1.2 * size;
+            pfont.ascent = b.actualBoundingBoxAscent;
+            pfont.descent = b.actualBoundingBoxDescent;
+            
+            leadDiv.style.font = f;
+            leadDiv.textContent = protrusions + "\n" + protrusions;
 
-        // Note that an italic, bold font must used "... Bold Italic"
-        // in P5. "... Italic Bold" is treated as normal/normal.
-        var illegalIndicator = name.indexOf(" Italic Bold");
-        if (illegalIndicator !== -1) {
-            name = name.substring(0, illegalIndicator);
-        }
+            document.body.appendChild(leadDiv);
 
-        // determine font style
-        this.style = "normal";
-        var italicsIndicator = name.indexOf(" Italic");
-        if (italicsIndicator !== -1) {
-            name = name.substring(0, italicsIndicator);
-            this.style = "italic";
-        }
-
-        // determine font weight
-        this.weight = "normal";
-        var boldIndicator = name.indexOf(" Bold");
-        if (boldIndicator !== -1) {
-            name = name.substring(0, boldIndicator);
-            this.weight = "bold";
-        }
-
-        // determine font-family name
-        this.family = "sans-serif";
-        if (name !== undef) {
-            switch (name) {
-                case "sans-serif":
-                case "serif":
-                case "monospace":
-                case "fantasy":
-                case "cursive":
-                    this.family = name;
-                    break;
-                default:
-                    this.family = '"' + name + '", sans-serif';
-                    break;
+            var leadDivHeight = leadDiv.clientHeight;
+            if (leadDivHeight >= pfont.size * 2) {
+                pfont.leading = Math.round(leadDivHeight / 2);
             }
+
+            document.body.removeChild(leadDiv);
         }
-        // Calculate the ascent/descent/leading value based on
-        // how the browser renders this font.
-        this.context2d = null;
-        computeFontMetrics(this);
-        this.css = this.getCSSDefinition();
-        this.context2d.font = this.css;
+    })();
+
+    // Defines system (non-SVG) font.    
+    class PFont{
+        constructor(name="", size=0){
+            this.size = size;
+            this.glyph = false;
+            this.ascent = 0;
+            this.descent = 0;
+            // For leading, the "safe" value uses the standard TEX ratio
+            this.leading = 1.2 * size;
+
+            // Note that an italic, bold font must used "... Bold Italic"
+            // in P5. "... Italic Bold" is treated as normal/normal.
+            var illegalIndicator = name.indexOf(" Italic Bold");
+            if (illegalIndicator !== -1) {
+                name = name.substring(0, illegalIndicator);
+            }
+
+            // determine font style
+            this.style = "normal";
+            var italicsIndicator = name.indexOf(" Italic");
+            if (italicsIndicator !== -1) {
+                name = name.substring(0, italicsIndicator);
+                this.style = "italic";
+            }
+
+            // determine font weight
+            this.weight = "normal";
+            var boldIndicator = name.indexOf(" Bold");
+            if (boldIndicator !== -1) {
+                name = name.substring(0, boldIndicator);
+                this.weight = "bold";
+            }
+
+            // determine font-family name
+            this.family = "sans-serif";
+            if (name !== undefined) {
+                switch (name) {
+                    case "sans-serif":
+                    case "serif":
+                    case "monospace":
+                    case "fantasy":
+                    case "cursive":
+                        this.family = name;
+                        break;
+                    default:
+                        this.family = '"' + name + '", sans-serif';
+                        break;
+                }
+            }
+            
+            // Calculate the ascent/descent/leading value based on
+            // how the browser renders this font.
+            computeFontMetrics(this);
+            this.css = this.getCSSDefinition();
+        }
+
+        /**
+        * This function generates the CSS "font" string for this PFont
+        */
+        getCSSDefinition(fontSize, lineHeight){
+            if (fontSize === undefined) {
+                fontSize = this.size + "px";
+            }
+            if (lineHeight === undefined) {
+                lineHeight = this.leading + "px";
+            }
+            // CSS "font" definition: font-style font-variant font-weight font-size/line-height font-family
+            return `${this.style} normal ${this.weight} ${fontSize}/${lineHeight} ${this.family}`;
+        };
+        
+        static PFontCache = new PFontCache(100);
+
+        /**
+        * This function acts as single access point for getting and caching
+        * fonts across all sketches handled by an instance of Processing.js
+        */
+        static get = function (fontName, fontSize) {
+            var cache = PFont.PFontCache;
+            var idx = fontName + "/" + fontSize;
+
+            var val = cache.get(idx);
+            if (!val) {
+                val = new PFont(fontName, fontSize);
+                cache.set(idx, val);
+            }
+            return val;
+        };
+
+
+        /**
+        * Lists all standard fonts. Due to browser limitations, this list is
+        * not the system font list, like in P5, but the CSS "genre" list.
+        */
+        static list = function () {
+            return ["sans-serif", "serif", "monospace", "fantasy", "cursive"];
+        };
     }
 
-    /**
-    * This function generates the CSS "font" string for this PFont
-    */
-    PFont.prototype.getCSSDefinition = function (fontSize, lineHeight) {
-        if (fontSize === undef) {
-            fontSize = this.size + "px";
-        }
-        if (lineHeight === undef) {
-            lineHeight = this.leading + "px";
-        }
-        // CSS "font" definition: font-style font-variant font-weight font-size/line-height font-family
-        var components = [this.style, "normal", this.weight, fontSize + "/" + lineHeight, this.family];
-        return components.join(" ");
-    };
-
-    /**
-    * We cannot rely on there being a 2d context available,
-    * because we support OPENGL sketches, and canvas3d has
-    * no "measureText" function in the API.
-    */
-    PFont.prototype.measureTextWidth = function (string) {
-        return this.context2d.measureText(string).width;
-    };
-
-    /**
-    * Global "loaded fonts" list, internal to PFont
-    */
-    PFont.PFontCache = new LRUCache(100);
-
-    /**
-    * This function acts as single access point for getting and caching
-    * fonts across all sketches handled by an instance of Processing.js
-    */
-    PFont.get = function (fontName, fontSize) {
-        var cache = PFont.PFontCache;
-        var idx = fontName + "/" + fontSize;
-
-        var val = cache.get(idx);
-        if (!val) {
-            val = new PFont(fontName, fontSize);
-            cache.set(idx, val);
-        }
-        return val;
-    };
-
-
-
-    /**
-    * Lists all standard fonts. Due to browser limitations, this list is
-    * not the system font list, like in P5, but the CSS "genre" list.
-    */
-    PFont.list = function () {
-        return ["sans-serif", "serif", "monospace", "fantasy", "cursive"];
-    };
 
     /**
     * Loading external fonts through @font-face rules is handled by PFont,
@@ -1136,7 +937,6 @@ var Processing = function (window, document, Math, undef) {
         }
     };
 
-
     // add to the default scope
     defaultScope.PFont = PFont;
 
@@ -1153,7 +953,7 @@ var Processing = function (window, document, Math, undef) {
         }
 
         var curElement,
-            pgraphicsMode = (aCanvas === undef && aCode === undef);
+            pgraphicsMode = (aCanvas === undefined && aCode === undefined);
 
         if (pgraphicsMode) {
             curElement = document.createElement("canvas");
@@ -1181,8 +981,8 @@ var Processing = function (window, document, Math, undef) {
         // PJS specific (non-p5) methods and properties to externalize
         p.externals = {
             canvas: curElement,
-            context: undef,
-            sketch: undef
+            context: undefined,
+            sketch: undefined
         };
 
         p.name = 'Processing.js Instance'; // Set Processing defaults / environment variables
@@ -1210,25 +1010,25 @@ var Processing = function (window, document, Math, undef) {
         p.mouseScroll = 0;
 
         // Undefined event handlers to be replaced by user when needed
-        p.mouseClicked = undef;
-        p.mouseDragged = undef;
-        p.mouseMoved = undef;
-        p.mousePressed = undef;
-        p.mouseReleased = undef;
-        p.mouseScrolled = undef;
-        p.mouseOver = undef;
-        p.mouseOut = undef;
-        p.touchStart = undef;
-        p.touchEnd = undef;
-        p.touchMove = undef;
-        p.touchCancel = undef;
-        p.key = undef;
-        p.keyCode = undef;
+        p.mouseClicked = undefined;
+        p.mouseDragged = undefined;
+        p.mouseMoved = undefined;
+        p.mousePressed = undefined;
+        p.mouseReleased = undefined;
+        p.mouseScrolled = undefined;
+        p.mouseOver = undefined;
+        p.mouseOut = undefined;
+        p.touchStart = undefined;
+        p.touchEnd = undefined;
+        p.touchMove = undefined;
+        p.touchCancel = undefined;
+        p.key = undefined;
+        p.keyCode = undefined;
         p.keyPressed = nop; // needed to remove function checks
         p.keyReleased = nop;
         p.keyTyped = nop;
-        p.draw = undef;
-        p.setup = undef;
+        p.draw = undefined;
+        p.setup = undefined;
 
         // Remapped vars
         p.__mousePressed = false;
@@ -1257,7 +1057,7 @@ var Processing = function (window, document, Math, undef) {
             }
 
             PVector.fromAngle = function (angle, v) {
-                if (v === undef || v === null) {
+                if (v === undefined || v === null) {
                     v = new PVector();
                 }
                 // XXX(jeresig)
@@ -1277,7 +1077,7 @@ var Processing = function (window, document, Math, undef) {
                 // XXX(jeresig)
                 var vx = mult * p.cos(angle);
                 var vy = mult * p.sin(angle);
-                if (v === undef || v === null) {
+                if (v === undefined || v === null) {
                     v = new PVector(vx, vy, vz);
                 } else {
                     v.set(vx, vy, vz);
@@ -1342,7 +1142,7 @@ var Processing = function (window, document, Math, undef) {
                     return (x * x + y * y + z * z);
                 },
                 setMag: function (v_or_len, len) {
-                    if (len === undef) {
+                    if (len === undefined) {
                         len = v_or_len;
                         this.normalize();
                         this.mult(len);
@@ -2041,7 +1841,7 @@ var Processing = function (window, document, Math, undef) {
         */
         function uniformf(cacheId, programObj, varName, varValue) {
             var varLocation = curContextCache.locations[cacheId];
-            if (varLocation === undef) {
+            if (varLocation === undefined) {
                 varLocation = curContext.getUniformLocation(programObj, varName);
                 curContextCache.locations[cacheId] = varLocation;
             }
@@ -2080,7 +1880,7 @@ var Processing = function (window, document, Math, undef) {
         */
         function uniformi(cacheId, programObj, varName, varValue) {
             var varLocation = curContextCache.locations[cacheId];
-            if (varLocation === undef) {
+            if (varLocation === undefined) {
                 varLocation = curContext.getUniformLocation(programObj, varName);
                 curContextCache.locations[cacheId] = varLocation;
             }
@@ -2121,7 +1921,7 @@ var Processing = function (window, document, Math, undef) {
         */
         function uniformMatrix(cacheId, programObj, varName, transpose, matrix) {
             var varLocation = curContextCache.locations[cacheId];
-            if (varLocation === undef) {
+            if (varLocation === undefined) {
                 varLocation = curContext.getUniformLocation(programObj, varName);
                 curContextCache.locations[cacheId] = varLocation;
             }
@@ -2157,7 +1957,7 @@ var Processing = function (window, document, Math, undef) {
         */
         function vertexAttribPointer(cacheId, programObj, varName, size, VBO) {
             var varLocation = curContextCache.attributes[cacheId];
-            if (varLocation === undef) {
+            if (varLocation === undefined) {
                 varLocation = curContext.getAttribLocation(programObj, varName);
                 curContextCache.attributes[cacheId] = varLocation;
             }
@@ -2181,7 +1981,7 @@ var Processing = function (window, document, Math, undef) {
         */
         function disableVertexAttribPointer(cacheId, programObj, varName) {
             var varLocation = curContextCache.attributes[cacheId];
-            if (varLocation === undef) {
+            if (varLocation === undefined) {
                 varLocation = curContext.getAttribLocation(programObj, varName);
                 curContextCache.attributes[cacheId] = varLocation;
             }
@@ -2289,7 +2089,7 @@ var Processing = function (window, document, Math, undef) {
                 this.code = NaN;
             }
 
-            return (charMap[this.code] === undef) ? charMap[this.code] = this : charMap[this.code];
+            return (charMap[this.code] === undefined) ? charMap[this.code] = this : charMap[this.code];
         };
 
         Char.prototype.toString = function () {
@@ -5462,7 +5262,7 @@ var Processing = function (window, document, Math, undef) {
              * @param {float} tz  the z-axis coordinate to move to
              */
             translate: function (tx, ty, tz) {
-                if (tz === undef) {
+                if (tz === undefined) {
                     tz = 0;
                 }
 
@@ -5699,7 +5499,7 @@ var Processing = function (window, document, Math, undef) {
              * @return {boolean} returns true if the operation was successful.
              */
             invApply: function () {
-                if (inverseCopy === undef) {
+                if (inverseCopy === undefined) {
                     inverseCopy = new PMatrix3D();
                 }
                 var a = arguments;
@@ -6096,7 +5896,7 @@ var Processing = function (window, document, Math, undef) {
             }
 
             if (ary.length === 0) {
-                ary = undef;
+                ary = undefined;
             }
 
             return ary;
@@ -6251,7 +6051,7 @@ var Processing = function (window, document, Math, undef) {
         * @see splice
         */
         p.subset = function (array, offset, length) {
-            var end = (length !== undef) ? offset + length : array.length;
+            var end = (length !== undefined) ? offset + length : array.length;
             return array.slice(offset, end);
         };
 
@@ -6360,7 +6160,7 @@ var Processing = function (window, document, Math, undef) {
 
             // copy src to dest from index srcPos to index destPos of length recursivly on objects
             for (var i = srcPos, j = destPos; i < length + srcPos; i++, j++) {
-                if (dest[j] !== undef) {
+                if (dest[j] !== undefined) {
                     dest[j] = src[i];
                 } else {
                     throw "array index out of bounds exception";
@@ -6734,17 +6534,17 @@ var Processing = function (window, document, Math, undef) {
         p.color = function (aValue1, aValue2, aValue3, aValue4) {
 
             // 4 arguments: (R, G, B, A) or (H, S, B, A)
-            if (aValue1 !== undef && aValue2 !== undef && aValue3 !== undef && aValue4 !== undef) {
+            if (aValue1 !== undefined && aValue2 !== undefined && aValue3 !== undefined && aValue4 !== undefined) {
                 return color$4(aValue1, aValue2, aValue3, aValue4);
             }
 
             // 3 arguments: (R, G, B) or (H, S, B)
-            if (aValue1 !== undef && aValue2 !== undef && aValue3 !== undef) {
+            if (aValue1 !== undefined && aValue2 !== undefined && aValue3 !== undefined) {
                 return color$4(aValue1, aValue2, aValue3, colorModeA);
             }
 
             // 2 arguments: (Color, A) or (Grayscale, A)
-            if (aValue1 !== undef && aValue2 !== undef) {
+            if (aValue1 !== undefined && aValue2 !== undefined) {
                 return color$2(aValue1, aValue2);
             }
 
@@ -7945,7 +7745,7 @@ var Processing = function (window, document, Math, undef) {
         * @returns none
         */
         p.link = function (href, target) {
-            if (target !== undef) {
+            if (target !== undefined) {
                 window.open(href, target);
             } else {
                 window.location = href;
@@ -7965,19 +7765,19 @@ var Processing = function (window, document, Math, undef) {
          * @see PImage
          */
         Drawing2D.prototype.toImageData = function (x, y, w, h) {
-            x = x !== undef ? x : 0;
-            y = y !== undef ? y : 0;
-            w = w !== undef ? w : p.width;
-            h = h !== undef ? h : p.height;
+            x = x !== undefined ? x : 0;
+            y = y !== undefined ? y : 0;
+            w = w !== undefined ? w : p.width;
+            h = h !== undefined ? h : p.height;
 
             return curContext.getImageData(x, y, w, h);
         };
 
         Drawing3D.prototype.toImageData = function (x, y, w, h) {
-            x = x !== undef ? x : 0;
-            y = y !== undef ? y : 0;
-            w = w !== undef ? w : p.width;
-            h = h !== undef ? h : p.height;
+            x = x !== undefined ? x : 0;
+            y = y !== undefined ? y : 0;
+            w = w !== undefined ? w : p.width;
+            h = h !== undefined ? h : p.height;
 
 
             var c = document.createElement("canvas"),
@@ -8094,7 +7894,7 @@ var Processing = function (window, document, Math, undef) {
         function nfCoreScalar(value, plus, minus, leftDigits, rightDigits, group) {
             var sign = (value < 0) ? minus : plus;
             var autoDetectDecimals = rightDigits === 0;
-            var rightDigitsOfDefault = (rightDigits === undef || rightDigits < 0) ? 0 : rightDigits;
+            var rightDigitsOfDefault = (rightDigits === undefined || rightDigits < 0) ? 0 : rightDigits;
 
             var absValue = Math.abs(value);
             if (autoDetectDecimals) {
@@ -8128,7 +7928,7 @@ var Processing = function (window, document, Math, undef) {
                 buffer = "" + (number % 10) + buffer;
                 number = Math.floor(number / 10);
             }
-            if (group !== undef) {
+            if (group !== undefined) {
                 var i = buffer.length - 3 - rightDigitsOfDefault;
                 while (i > 0) {
                     buffer = buffer.substring(0, i) + group + buffer.substring(i);
@@ -8247,7 +8047,7 @@ var Processing = function (window, document, Math, undef) {
 
         var decimalToHex = function (d, padding) {
             //if there is no padding value added, default padding to 8 else go into while statement.
-            padding = (padding === undef || padding === null) ? padding = 8 : padding;
+            padding = (padding === undefined || padding === null) ? padding = 8 : padding;
             if (d < 0) {
                 d = 0xFFFFFFFF + d + 1;
             }
@@ -8602,7 +8402,7 @@ var Processing = function (window, document, Math, undef) {
             var pattern = new RegExp(regex);
 
             // If limit is not specified, use JavaScript's built-in String.split.
-            if ((limit === undef) || (limit < 1)) {
+            if ((limit === undefined) || (limit < 1)) {
                 return subject.split(pattern);
             }
 
@@ -9557,12 +9357,12 @@ var Processing = function (window, document, Math, undef) {
             };
 
             // by default use standard random, otherwise seeded
-            random = (seed === undef) ? Math.random : (new Marsaglia(seed)).nextDouble;
+            random = (seed === undefined) ? Math.random : (new Marsaglia(seed)).nextDouble;
         };
 
         // Noise functions and helpers
         function PerlinNoise(seed) {
-            var rnd = seed !== undef ? new Marsaglia(seed) : Marsaglia.createRandomized();
+            var rnd = seed !== undefined ? new Marsaglia(seed) : Marsaglia.createRandomized();
             var i, j;
             // http://www.noisemachine.com/talk1/17b.html
             // http://mrl.nyu.edu/~perlin/noise/
@@ -9623,7 +9423,7 @@ var Processing = function (window, document, Math, undef) {
         }
 
         // processing defaults
-        var noiseProfile = { generator: undef, octaves: 4, fallout: 0.5, seed: undef };
+        var noiseProfile = { generator: undefined, octaves: 4, fallout: 0.5, seed: undefined };
 
         /**
         * Returns the Perlin noise value at specified coordinates. Perlin noise is a random sequence
@@ -9656,7 +9456,7 @@ var Processing = function (window, document, Math, undef) {
         * @see noiseDetail
         */
         p.noise = function (x, y, z) {
-            if (noiseProfile.generator === undef) {
+            if (noiseProfile.generator === undefined) {
                 // caching
                 noiseProfile.generator = new PerlinNoise(noiseProfile.seed);
             }
@@ -9697,7 +9497,7 @@ var Processing = function (window, document, Math, undef) {
         */
         p.noiseDetail = function (octaves, fallout) {
             noiseProfile.octaves = octaves;
-            if (fallout !== undef) {
+            if (fallout !== undefined) {
                 noiseProfile.fallout = fallout;
             }
         };
@@ -9718,7 +9518,7 @@ var Processing = function (window, document, Math, undef) {
         */
         p.noiseSeed = function (seed) {
             noiseProfile.seed = seed;
-            noiseProfile.generator = undef;
+            noiseProfile.generator = undefined;
         };
 
         /**
@@ -9789,7 +9589,7 @@ var Processing = function (window, document, Math, undef) {
         };
 
         Drawing2D.prototype.size = function (aWidth, aHeight, aMode) {
-            if (curContext === undef) {
+            if (curContext === undefined) {
                 // size() was called without p.init() default context, i.e. p.createGraphics()
                 curContext = curElement.getContext("2d");
                 userMatrixStack = new PMatrixStack();
@@ -10383,7 +10183,7 @@ var Processing = function (window, document, Math, undef) {
          * @see frustum
          */
         p.camera = function (eyeX, eyeY, eyeZ, centerX, centerY, centerZ, upX, upY, upZ) {
-            if (eyeX === undef) {
+            if (eyeX === undefined) {
                 // Workaround if createGraphics is used.
                 cameraX = p.width / 2;
                 cameraY = p.height / 2;
@@ -11599,14 +11399,14 @@ var Processing = function (window, document, Math, undef) {
             if (firstVert) { firstVert = false; }
             vert["isVert"] = true;
 
-            if (v === undef && usingTexture) {
+            if (v === undefined && usingTexture) {
                 v = u;
                 u = z;
                 z = 0;
             }
 
             // Convert u and v to normalized coordinates
-            if (u !== undef && v !== undef) {
+            if (u !== undefined && v !== undefined) {
                 if (curTextureMode === PConstants.IMAGE) {
                     u /= curTexture.width;
                     v /= curTexture.height;
@@ -11810,43 +11610,8 @@ var Processing = function (window, document, Math, undef) {
             var i, j;
             var vertArrayLength = vertArray.length;
 
-            // :)
-            // for (i = 0; i < vertArrayLength; i++) {
-            //   cachedVertArray = vertArray[i];
-            //   for (j = 0; j < 3; j++) {
-            //     fillVertArray.push(cachedVertArray[j]);
-            //   }
-            // }
-
-            // // 5,6,7,8
-            // // R,G,B,A - fill colour
-            // for (i = 0; i < vertArrayLength; i++) {
-            //   cachedVertArray = vertArray[i];
-            //   for (j = 5; j < 9; j++) {
-            //     colorVertArray.push(cachedVertArray[j]);
-            //   }
-            // }
-
-            // // 9,10,11,12
-            // // R, G, B, A - stroke colour
-            // for (i = 0; i < vertArrayLength; i++) {
-            //   cachedVertArray = vertArray[i];
-            //   for (j = 9; j < 13; j++) {
-            //     strokeVertArray.push(cachedVertArray[j]);
-            //   }
-            // }
-
-            // // texture u,v
-            // for (i = 0; i < vertArrayLength; i++) {
-            //   cachedVertArray = vertArray[i];
-            //   texVertArray.push(cachedVertArray[3]);
-            //   texVertArray.push(cachedVertArray[4]);
-            // }
-
-
-
             // curveVertex
-            if (isCurve && (curShape === PConstants.POLYGON || curShape === undef)) {
+            if (isCurve && (curShape === PConstants.POLYGON || curShape === undefined)) {
                 if (vertArrayLength > 3) {
                     var b = [],
                         s = 1 - curTightness;
@@ -11875,7 +11640,7 @@ var Processing = function (window, document, Math, undef) {
             }
 
             // bezierVertex
-            else if (isBezier && (curShape === PConstants.POLYGON || curShape === undef)) {
+            else if (isBezier && (curShape === PConstants.POLYGON || curShape === undefined)) {
                 curContext.beginPath();
                 for (i = 0; i < vertArrayLength; i++) {
                     cachedVertArray = vertArray[i];
@@ -12136,7 +11901,7 @@ var Processing = function (window, document, Math, undef) {
             // End duplication
 
             // curveVertex
-            if (isCurve && (curShape === PConstants.POLYGON || curShape === undef)) {
+            if (isCurve && (curShape === PConstants.POLYGON || curShape === undefined)) {
                 lineVertArray = fillVertArray;
                 if (doStroke) {
                     line3D(lineVertArray, null, strokeVertArray);
@@ -12146,7 +11911,7 @@ var Processing = function (window, document, Math, undef) {
                 }
             }
             // bezierVertex
-            else if (isBezier && (curShape === PConstants.POLYGON || curShape === undef)) {
+            else if (isBezier && (curShape === PConstants.POLYGON || curShape === undefined)) {
                 lineVertArray = fillVertArray;
                 lineVertArray.splice(lineVertArray.length - 3);
                 strokeVertArray.splice(strokeVertArray.length - 4);
@@ -12570,7 +12335,7 @@ var Processing = function (window, document, Math, undef) {
             }
 
             if (arguments.length === 9) {
-                if (bezierDrawMatrix === undef) {
+                if (bezierDrawMatrix === undefined) {
                     bezierDrawMatrix = new PMatrix3D();
                 }
                 // setup matrix for forward differencing to speed up drawing
@@ -13055,8 +12820,8 @@ var Processing = function (window, document, Math, undef) {
                 return;
             }
 
-            var swap = undef,
-                lineCap = undef,
+            var swap = undefined,
+                lineCap = undefined,
                 drawCrisp = true,
                 currentModelView = modelView.array(),
                 identityMatrix = [1, 0, 0, 0, 1, 0];
@@ -13117,7 +12882,7 @@ var Processing = function (window, document, Math, undef) {
         };
 
         Drawing3D.prototype.line = function (x1, y1, z1, x2, y2, z2) {
-            if (y2 === undef || z2 === undef) { // 2D line called in 3D context
+            if (y2 === undefined || z2 === undefined) { // 2D line called in 3D context
                 z2 = 0;
                 y2 = x2;
                 x2 = z1;
@@ -13332,7 +13097,7 @@ var Processing = function (window, document, Math, undef) {
         };
 
         var roundedRect$2d = function (x, y, width, height, tl, tr, br, bl) {
-            if (bl === undef) {
+            if (bl === undefined) {
                 tr = tl;
                 br = tl;
                 bl = tl;
@@ -13409,7 +13174,7 @@ var Processing = function (window, document, Math, undef) {
                 width = Math.round(width);
                 height = Math.round(height);
             }
-            if (tl !== undef) {
+            if (tl !== undefined) {
                 roundedRect$2d(x, y, width, height, tl, tr, br, bl);
                 return;
             }
@@ -13428,7 +13193,7 @@ var Processing = function (window, document, Math, undef) {
         };
 
         Drawing3D.prototype.rect = function (x, y, width, height, tl, tr, br, bl) {
-            if (tl !== undef) {
+            if (tl !== undefined) {
                 throw "rect() with rounded corners is not supported in 3D mode";
             }
 
@@ -13696,7 +13461,7 @@ var Processing = function (window, document, Math, undef) {
         p.save = function (file, img) {
             // file is unused at the moment
             // may implement this differently in later release
-            if (img !== undef) {
+            if (img !== undefined) {
                 return window.open(img.toDataURL(), "_blank");
             }
             return window.open(p.externals.canvas.toDataURL(), "_blank");
@@ -13705,7 +13470,7 @@ var Processing = function (window, document, Math, undef) {
         var saveNumber = 0;
 
         p.saveFrame = function (file) {
-            if (file === undef) {
+            if (file === undefined) {
                 // use default name template if parameter is not specified
                 file = "screen-####.png";
             }
@@ -13722,12 +13487,12 @@ var Processing = function (window, document, Math, undef) {
 
         var utilityContext2d = document.createElement("canvas").getContext("2d");
 
-        var canvasDataCache = [undef, undef, undef]; // we need three for now
+        var canvasDataCache = [undefined, undefined, undefined]; // we need three for now
 
         function getCanvasData(obj, w, h) {
             var canvasData = canvasDataCache.shift();
 
-            if (canvasData === undef) {
+            if (canvasData === undefined) {
                 canvasData = {};
                 canvasData.canvas = document.createElement("canvas");
                 canvasData.context = canvasData.canvas.getContext('2d');
@@ -14680,7 +14445,7 @@ var Processing = function (window, document, Math, undef) {
         };
 
         Drawing2D.prototype.background = function (arg1, arg2, arg3, arg4) {
-            if (arg1 !== undef) {
+            if (arg1 !== undefined) {
                 backgroundHelper(arg1, arg2, arg3, arg4);
             }
 
@@ -14879,7 +14644,7 @@ var Processing = function (window, document, Math, undef) {
         * @see get
         */
         p.copy = function (src, sx, sy, sw, sh, dx, dy, dw, dh) {
-            if (dh === undef) {
+            if (dh === undefined) {
                 // shift everything, and introduce p
                 dh = dw;
                 dw = dy;
@@ -14933,7 +14698,7 @@ var Processing = function (window, document, Math, undef) {
                 throw "Image is loaded remotely. Cannot blend image.";
             }
 
-            if (mode === undef) {
+            if (mode === undefined) {
                 // shift everything, and introduce p
                 mode = dh;
                 dh = dw;
@@ -14954,7 +14719,7 @@ var Processing = function (window, document, Math, undef) {
                 dest = pimgdest || p;
 
             // check if pimgdest is there and pixels, if so this was a call from pimg.blend
-            if (pimgdest === undef || mode === undef) {
+            if (pimgdest === undefined || mode === undefined) {
                 p.loadPixels();
             }
 
@@ -14967,7 +14732,7 @@ var Processing = function (window, document, Math, undef) {
                 p.blit_resize(src, sx, sy, sx2, sy2, dest.imageData.data, dest.width, dest.height, dx, dy, dx2, dy2, mode);
             }
 
-            if (pimgdest === undef) {
+            if (pimgdest === undefined) {
                 p.updatePixels();
             }
         };
@@ -15245,7 +15010,7 @@ var Processing = function (window, document, Math, undef) {
                 img = p;
             }
 
-            if (param === undef) {
+            if (param === undefined) {
                 param = null;
             }
             if (img.isRemote) { // Remote images cannot access imageData
@@ -15589,11 +15354,11 @@ var Processing = function (window, document, Math, undef) {
          * @see #createFont
          */
         p.loadFont = function (name, size) {
-            if (name === undef) {
+            if (name === undefined) {
                 throw ("font name required in loadFont.");
             }
             if (name.indexOf(".svg") === -1) {
-                if (size === undef) {
+                if (size === undefined) {
                     size = curTextFont.size;
                 }
                 return PFont.get(name, size);
@@ -15659,7 +15424,7 @@ var Processing = function (window, document, Math, undef) {
          * @see #text
          */
         p.textFont = function (pfont, size) {
-            if (size !== undef) {
+            if (size !== undefined) {
                 // If we're using an SVG glyph font, don't load from cache
                 if (!pfont.glyph) {
                     pfont = PFont.get(pfont.name, size);
@@ -15772,7 +15537,7 @@ var Processing = function (window, document, Math, undef) {
                 }
                 return p.nf(obj, 0, 3);
             }
-            if (obj === null || obj === undef) {
+            if (obj === null || obj === undefined) {
                 return "";
             }
             return obj.toString();
@@ -15804,7 +15569,7 @@ var Processing = function (window, document, Math, undef) {
         Drawing3D.prototype.textWidth = function (str) {
             var lines = toP5String(str).split(/\r?\n/g), width = 0;
             var i, linesCount = lines.length;
-            if (textcanvas === undef) {
+            if (textcanvas === undefined) {
                 textcanvas = document.createElement("canvas");
             }
 
@@ -15976,7 +15741,7 @@ var Processing = function (window, document, Math, undef) {
 
         Drawing3D.prototype.text$line = function (str, x, y, z, align) {
             // handle case for 3d text
-            if (textcanvas === undef) {
+            if (textcanvas === undefined) {
                 textcanvas = document.createElement("canvas");
             }
             var oldContext = curContext;
@@ -16372,7 +16137,7 @@ var Processing = function (window, document, Math, undef) {
                     }
                     d = glyph[i].getAttribute("d");
                     // Split path commands in glpyh
-                    if (d !== undef) {
+                    if (d !== undefined) {
                         path = buildPath(d);
                         // Store glyph data to table object
                         p.glyphTable[url][name] = {
@@ -16656,17 +16421,17 @@ var Processing = function (window, document, Math, undef) {
 
             // If there are any native touch events defined in the sketch, connect all of them
             // Otherwise, connect all of the emulated mouse events
-            if (p.touchStart !== undef || p.touchMove !== undef ||
-                p.touchEnd !== undef || p.touchCancel !== undef) {
+            if (p.touchStart !== undefined || p.touchMove !== undefined ||
+                p.touchEnd !== undefined || p.touchCancel !== undefined) {
                 attachEventHandler(curElement, "touchstart", function (t) {
-                    if (p.touchStart !== undef) {
+                    if (p.touchStart !== undefined) {
                         t = addTouchEventOffset(t);
                         p.touchStart(t);
                     }
                 });
 
                 attachEventHandler(curElement, "touchmove", function (t) {
-                    if (p.touchMove !== undef) {
+                    if (p.touchMove !== undefined) {
                         t.preventDefault(); // Stop the viewport from scrolling
                         t = addTouchEventOffset(t);
                         p.touchMove(t);
@@ -16674,14 +16439,14 @@ var Processing = function (window, document, Math, undef) {
                 });
 
                 attachEventHandler(curElement, "touchend", function (t) {
-                    if (p.touchEnd !== undef) {
+                    if (p.touchEnd !== undefined) {
                         t = addTouchEventOffset(t);
                         p.touchEnd(t);
                     }
                 });
 
                 attachEventHandler(curElement, "touchcancel", function (t) {
-                    if (p.touchCancel !== undef) {
+                    if (p.touchCancel !== undefined) {
                         t = addTouchEventOffset(t);
                         p.touchCancel(t);
                     }
@@ -16984,7 +16749,7 @@ var Processing = function (window, document, Math, undef) {
 
         function handleKeyup(e) {
             var code = getKeyCode(e), c = pressedKeysMap[code];
-            if (c === undef) {
+            if (c === undefined) {
                 return; // no keyPressed event was generated.
             }
             p.key = c;
@@ -16993,7 +16758,7 @@ var Processing = function (window, document, Math, undef) {
             delete pressedKeysMap[code];
             updateKeyPressed();
         }
-
+        
         // Send aCode Processing syntax to be converted to JavaScript
         if (!pgraphicsMode) {
             if (aCode instanceof Processing.Sketch) {
@@ -17004,14 +16769,7 @@ var Processing = function (window, document, Math, undef) {
                 curSketch = new Processing.Sketch(aCode);
             } else if (!aCode) {
                 // Empty sketch
-                curSketch = new Processing.Sketch(function () { });
-            } else {
-                //#if PARSER
-                // Compile the code
-                curSketch = Processing.compile(aCode);
-                //#else
-                //      throw "PJS compile is not supported";
-                //#endif
+                curSketch = new Processing.Sketch(function(){});
             }
 
             // Expose internal field for diagnostics and testing
@@ -17148,7 +16906,7 @@ var Processing = function (window, document, Math, undef) {
     }; // Processing() ends
 
     // Place-holder for overridable debugging function
-    Processing.debug = debug;
+    Processing.debug = t=>console.log('Processing.js: ', t);
 
     Processing.prototype = defaultScope;
 
@@ -17483,9 +17241,7 @@ var Processing = function (window, document, Math, undef) {
                     return;
                 }
 
-                if (!isDOMPresent) {
-                    this.images[href] = null;
-                }
+                this.images[href] = null;
 
                 // No image in the DOM, kick-off a background load
                 if (!img) {
