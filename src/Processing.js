@@ -698,7 +698,7 @@ var Processing = function (window, document, Math) {
 
         const protrusions = "dbflkhyjqpg";
 
-        return function(pfont){
+        const out = function(pfont){
             var f = pfont.getCSSDefinition(pfont.size + "px", "normal");
 
             ctx.font = f;
@@ -720,6 +720,9 @@ var Processing = function (window, document, Math) {
 
             document.body.removeChild(leadDiv);
         }
+        out.ctx = ctx;
+        
+        return out;
     })();
 
     // Defines system (non-SVG) font.    
@@ -791,6 +794,10 @@ var Processing = function (window, document, Math) {
             // CSS "font" definition: font-style font-variant font-weight font-size/line-height font-family
             return `${this.style} normal ${this.weight} ${fontSize}/${lineHeight} ${this.family}`;
         };
+
+        measureTextWidth(string){
+            return computeFontMetrics.ctx.measureText(string).width;
+        }
         
         static PFontCache = new PFontCache(100);
 
