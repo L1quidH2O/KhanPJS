@@ -319,7 +319,7 @@ ASTTransforms.rewriteContextVariables = function (envName, context) {
         },
         leave: function leave(node, path) {
             var parent = path[path.length - 2];
-
+            
             if (node.type === "Identifier") {
                 if (parent.type === "ArrayPattern" ? isReference(node, path[path.length - 3]) : isReference(node, parent)) {
 
@@ -347,13 +347,12 @@ ASTTransforms.rewriteContextVariables = function (envName, context) {
                     if (["undefined", "Infinity", "NaN", "arguments"].includes(node.name)) {
                         return;
                     }
-                    // console.log(node.name, context, scopeIndex, context.hasOwnProperty(node.name)) :)
+                    
                     // Prefix identifiers that exist in the context object and
                     // have not been defined in any scope.
                     // Also, prefix any other identifers that
                     // exist at the global scope.
                     if (node.name in context && scopeIndex === -1 || scopeIndex === 0) {
-
                         return b.MemberExpression(b.Identifier(envName), b.Identifier(node.name));
                     }
                 }

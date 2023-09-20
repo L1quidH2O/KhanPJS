@@ -699,12 +699,12 @@ var Processing = function (window, document, Math) {
         const protrusions = "dbflkhyjqpg";
 
         const out = function(pfont){
-            var f = pfont.getCSSDefinition(pfont.size + "px", "normal");
+            var f = pfont.css;
 
             ctx.font = f;
 
             var b = ctx.measureText(protrusions);
-
+            
             pfont.ascent = b.actualBoundingBoxAscent;
             pfont.descent = b.actualBoundingBoxDescent;
             
@@ -720,6 +720,7 @@ var Processing = function (window, document, Math) {
 
             document.body.removeChild(leadDiv);
         }
+
         out.ctx = ctx;
         
         return out;
@@ -777,8 +778,8 @@ var Processing = function (window, document, Math) {
             
             // Calculate the ascent/descent/leading value based on
             // how the browser renders this font.
-            computeFontMetrics(this);
             this.css = this.getCSSDefinition();
+            computeFontMetrics(this);
         }
 
         /**
@@ -796,6 +797,7 @@ var Processing = function (window, document, Math) {
         };
 
         measureTextWidth(string){
+            computeFontMetrics.ctx.font = this.css;
             return computeFontMetrics.ctx.measureText(string).width;
         }
         
@@ -13162,17 +13164,21 @@ var Processing = function (window, document, Math) {
                 return;
             }
 
-            if (curRectMode === PConstants.CORNERS) {
-                width -= x;
-                height -= y;
-            } else if (curRectMode === PConstants.RADIUS) {
-                width *= 2;
-                height *= 2;
-                x -= width / 2;
-                y -= height / 2;
-            } else if (curRectMode === PConstants.CENTER) {
-                x -= width / 2;
-                y -= height / 2;
+            switch(curRectMode){
+                case PConstants.CORNERS:
+                    width -= x;
+                    height -= y;
+                break;
+                case PConstants.RADIUS:
+                    width *= 2;
+                    height *= 2;
+                    x -= width / 2;
+                    y -= height / 2;
+                break;
+                case PConstants.CENTER:
+                    x -= width / 2;
+                    y -= height / 2;
+                break;
             }
 
             if (!renderSmooth) {

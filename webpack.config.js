@@ -5,4 +5,7 @@ module.exports = {
     filename: './build/KhanPJS.min.js',
     path: __dirname,
   },
+  optimization: {
+    usedExports: true,
+  },
 };
