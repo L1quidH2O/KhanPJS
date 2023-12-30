@@ -65,7 +65,7 @@ pjs.loopCheck = 1000;
 -------------------------------
 
 ## FEATURES
-* Added ES6 `class` support
+* Added mostly stable ES6 support
 * Optimized some parts of Processing.js
 
 -------------------------------
@@ -74,6 +74,8 @@ pjs.loopCheck = 1000;
 * Some "hacks" that are used by user programs but arent used by KhanPJS now have the same return type but no functionality (ex: `PJSCodeInjector.propListString` returns an empty string)
 
 * Removed third party libraries that might be used by some user programs (ex: `i18n`)
+
+* Removed the `Program` class used in khanacademy projects.
 
 * Only these classes are in the top scope
     - ASTTransforms

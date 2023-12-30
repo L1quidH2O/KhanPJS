@@ -237,26 +237,6 @@ var ASTTransforms = {};
 
 var b = ASTBuilder;
 
-/**
- * Visitor object which adds line and column information as additional args,
- * e.g. Program.assertEqual(a, b) => Program.assertEqual(a, b, <line>, <column>)
- * where <line> and <column> are number literals.
-**/
-ASTTransforms.rewriteAssertEquals = {
-    leave: function leave(node, path) {
-        if (node.type === "Identifier" && node.name === "Program") {
-            var _parent = path[path.length - 2];
-            if (_parent.type === "MemberExpression" && _parent.object === node && _parent.property.type === "Identifier" && _parent.property.name === "assertEqual") {
-
-                var grandparent = path[path.length - 3];
-                if (grandparent.type === "CallExpression") {
-                    grandparent.arguments.push(b.Literal(grandparent.loc.start.line), b.Literal(grandparent.loc.start.column));
-                }
-            }
-        }
-    }
-};
-
 var isReference = function isReference(node, parent) {
 
     // we're a property key so we aren't referenced
@@ -294,8 +274,8 @@ var scopes = [{}];
  * @param {string} envName
  * @returns {Object}
  */
-ASTTransforms.rewriteContextVariables = function (envName, context) {
-    return {
+ASTTransforms.rewriteContextVariables = function(envName, context){
+    var old = {
         enter: function enter(node, path) {
             // Create a new scope whenever we encounter a function declaration/expression
             // and add all of its paramters to this new scope.
@@ -321,8 +301,8 @@ ASTTransforms.rewriteContextVariables = function (envName, context) {
             var parent = path[path.length - 2];
             
             if (node.type === "Identifier") {
+                if(parent.type === "MethodDefinition"){return;}
                 if (parent.type === "ArrayPattern" ? isReference(node, path[path.length - 3]) : isReference(node, parent)) {
-
                     var scopeIndex = -1;
                     for (var i = scopes.length - 1; i > -1; i--) {
                         if (scopes[i][node.name]) {
@@ -377,21 +357,6 @@ ASTTransforms.rewriteContextVariables = function (envName, context) {
                     // that appear in the global scope. Draw loop methods aren't
                     // special, they should be treated in the exact same way.
                     if (scopes.length === 1) {
-
-                        /*
-                        for array destructuring expressions
-                            var [a,b,c] = [1,2,3];
-                        becomes
-                            [a, b, c] = [1,2,3];
-                        then in AST.rewriteArrayPattern it becomes
-                            [__env__.a, __env__.b, __env__.c] = [1,2,3];
-                        */
-                        if (decl.id.type === "ArrayPattern") {
-                            return b.ExpressionStatement(b.AssignmentExpression(decl.id, "=", decl.init))
-                        }
-
-
-
                         if (["Program", "BlockStatement", "SwitchCase"].includes(parent.type)) {
                             return b.ExpressionStatement(b.AssignmentExpression(b.MemberExpression(b.Identifier(envName), b.Identifier(decl.id.name)), "=", decl.init));
                         } else {
@@ -416,7 +381,6 @@ ASTTransforms.rewriteContextVariables = function (envName, context) {
                     // Multiple VariableDeclarators
 
                     if (scopes.length === 1) {
-
                         if (["Program", "BlockStatement"].includes(parent.type)) {
                             // Before: var x = 5, y = 10, z;
                             // After: __env__.x = 5; __env__.y = 10;
@@ -460,20 +424,25 @@ ASTTransforms.rewriteContextVariables = function (envName, context) {
                         });
                     }
                 }
-            } else if (/^Function/.test(node.type)) {
+            }
+        }
+    };
+
+    return {
+        enter: old.enter,
+        leave(node, path){
+            if (/^Function/.test(node.type)) {
                 // Remove all local variables from the scopes stack as we exit
                 // the function expression/declaration.
                 scopes.pop();
             }
-        }
-    };
-};
-
-ASTTransforms.rewriteArrayPattern = function (envName, context) {
-    return {
-        leave: function leave(node, path) {
-            if (node.type === "ArrayPattern" && scopes.length === 1) {
-                return b.ArrayPattern(node.elements.map(r => b.MemberExpression(b.Identifier(envName), b.Identifier(r.name))));
+            else if(node.type === "Identifier"){
+                
+                for(let p = context; p.__proto__ !== null; p = p.__proto__){
+                    if(p.hasOwnProperty(node.name)){
+                        return old.leave(node, path);
+                    }
+                }
             }
         }
     }
@@ -483,10 +452,7 @@ ASTTransforms.checkForBannedProps = function (bannedProps) {
     return {
         leave: function leave(node, path) {
             if (node.type === "Identifier" && bannedProps.includes(node.name)) {
-                throw {
-                    row: node.loc.start.line - 1,
-                    html: "Use of <code>" + node.name + "</code> as an identifier is prohibited."
-                };
+                throw `Use of "${node.name}" as an identifier is prohibited. (${node.loc.start.line - 1})`;
             }
         }
     };
@@ -526,50 +492,6 @@ ASTTransforms.findResources = function (resources) {
     };
 };
 
-ASTTransforms.rewriteFunctionDeclarations = {
-    leave: function leave(node, path) {
-        if (node.type === "FunctionDeclaration") {
-            var decl = {
-                type: "VariableDeclarator",
-                id: {
-                    type: "Identifier",
-                    name: node.id.name
-                },
-                init: {
-                    type: "FunctionExpression",
-                    id: null,
-                    params: node.params,
-                    body: node.body,
-                    generator: node.generator,
-                    expression: node.expression,
-                    async: node.async
-                }
-            };
-            return b.VariableDeclaration([decl], "var");
-        }
-    }
-};
-
-ASTTransforms.rewriteClassDeclarations = {
-    leave: function leave(node, path) {
-        if (node.type === "ClassDeclaration") {
-            var decl = {
-                type: "VariableDeclarator",
-                id: {
-                    type: "Identifier",
-                    name: node.id.name
-                },
-                init: {
-                    type: "ClassExpression",
-                    id: null,
-                    superClass: node.superClass,
-                    body: node.body
-                }
-            };
-            return b.VariableDeclaration([decl], "var");
-        }
-    }
-};
 
 window.ASTTransforms = ASTTransforms;
 window.ASTBuilder = ASTTransforms;

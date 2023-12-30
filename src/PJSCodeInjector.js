@@ -1,7 +1,9 @@
 import { ASTTransforms, ASTBuilder, walkAST } from "./AST";
 import { PJSResourceCache } from "./PJSResourceCache";
-import * as esprima from "esprima";
-import escodegen from "escodegen";
+// import * as esprima from "esprima";
+// import escodegen from "escodegen";
+import * as acorn from "acorn";
+import * as astring from "astring";
 
 var PJSUtils = {
     /**
@@ -187,7 +189,12 @@ class LoopProtector {
 
         var b = ASTBuilder;
 
-        if (this.riskyStatements.indexOf(node.type) !== -1) {
+        if (this.riskyStatements.indexOf(node.type) !== -1 && node.body.body?.unshift !== undefined){
+            /*
+                if an arrow function does not have a body, then no loop protect
+                const a = b=>wow();
+            */
+
             if (this.reportLocation) {
                 var _location = {
                     type: node.type,
@@ -946,7 +953,8 @@ class PJSCodeInjector {
         // with a previous __env__ string.
         // TODO(kevinb) figure out how to use the AST so we're not calling .toString() on functions
         var envNameRegex = new RegExp(envName + "\\.", "g");
-        var ast = esprima.parse(code.replace(envNameRegex, ""), { loc: true });
+        // var ast = esprima.parse(code.replace(envNameRegex, ""), { loc: true });
+        var ast = acorn.parse(code.replace(envNameRegex, ""), { ecmaVersion: 2020, locations: true });
 
         var astTransformPasses = [];
 
@@ -962,11 +970,7 @@ class PJSCodeInjector {
         } else {
             astTransformPasses.push(ASTTransforms.checkForBannedProps(["__env__"]));
         }
-        // rewriteFunctionDeclarations turns function x() into var x = function
-        astTransformPasses.push(ASTTransforms.rewriteFunctionDeclarations);
-
-        // rewriteClassDeclarations turns class x{} into var x = class{}
-        astTransformPasses.push(ASTTransforms.rewriteClassDeclarations);
+        
 
         // loopProtector adds LoopProtector code which checks how long it's
         // taking to run event loop and will throw if it's taking too long.
@@ -974,37 +978,18 @@ class PJSCodeInjector {
             astTransformPasses.push(loopProtector);
         }
 
-        // rewriteAssertEquals adds line and column arguments to calls to
-        // Program.assertEquals.
-        astTransformPasses.push(ASTTransforms.rewriteAssertEquals);
 
-
-        try {
-            walkAST(ast, null, astTransformPasses);
-        } catch (e) {
-            return e;
-        }
+        
+        walkAST(ast, null, astTransformPasses);
 
         // rewriteContextVariables has to be done separately because loopProtector
         // adds variable references which need to be rewritten.
         // Profile first before trying to combine these two passes.  It may be
         // that parsing is dominating
-        walkAST(ast, null, [ASTTransforms.rewriteArrayPattern(envName, context), ASTTransforms.rewriteContextVariables(envName, context)]);
-
-        code = "";
-        if (mutatingCalls) {
-            // Prepend injected function calls with envName and any arguments
-            // that are objects with envName as well.  This is a lot quicker
-            // than parsing these and using rewriteContextVariables, especially
-            // if there are a lot of inject function calls.
-            code += mutatingCalls.map(function (call) {
-                call = call.replace(/__obj__/g, envName + ".__obj__");
-                return envName + "." + call;
-            }).join("\n");
-        }
-
-        // console.log(code + escodegen.generate(ast)) :)
-        return code + escodegen.generate(ast);
+        const contextVariables = [];
+        walkAST(ast, null, [ASTTransforms.rewriteContextVariables(envName, context, contextVariables)]);
+        
+        return astring.generate(ast);
     }
 
     /**
@@ -1155,6 +1140,7 @@ class PJSCodeInjector {
             var transformedCode = this.transformCode(code, context, mutatingCalls);
             var funcBody = "var " + this.envName + " = context;\n" + ("(function(){\n" + transformedCode + "\n}).apply(" + topLevelThis + ");");
             var func = new Function("context", funcBody);
+            console.log(func.toString())
             func(context);
 
         } catch (e) {

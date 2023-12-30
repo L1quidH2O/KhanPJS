@@ -1,5 +1,6 @@
 import { ASTTransforms, walkAST } from "./AST";
-import * as esprima from "esprima";
+// import * as esprima from "esprima";
+import * as acorn from "acorn";
 
 function PJSResourceCache(options) {
     this.canvas = options.canvas; // customized Processing instance
@@ -143,7 +144,7 @@ PJSResourceCache.prototype.getSound = function (filename) {
  * @returns {Object}
  */
 PJSResourceCache.findResources = function (code) {
-    var ast = esprima.parse(code, { loc: true });
+    var ast = acorn.parse(code, { ecmaVersion: 2020, locations: true });
 
     var resources = {};
     walkAST(ast, null, [ASTTransforms.findResources(resources)]);
