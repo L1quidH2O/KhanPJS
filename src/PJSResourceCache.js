@@ -144,7 +144,7 @@ PJSResourceCache.prototype.getSound = function (filename) {
  * @returns {Object}
  */
 PJSResourceCache.findResources = function (code) {
-    var ast = acorn.parse(code, { ecmaVersion: 2020, locations: true });
+    var ast = acorn.parse(code, { ecmaVersion: "latest", locations: true });
 
     var resources = {};
     walkAST(ast, null, [ASTTransforms.findResources(resources)]);

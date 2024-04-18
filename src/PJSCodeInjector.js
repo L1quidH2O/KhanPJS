@@ -954,7 +954,7 @@ class PJSCodeInjector {
         // TODO(kevinb) figure out how to use the AST so we're not calling .toString() on functions
         var envNameRegex = new RegExp(envName + "\\.", "g");
         // var ast = esprima.parse(code.replace(envNameRegex, ""), { loc: true });
-        var ast = acorn.parse(code.replace(envNameRegex, ""), { ecmaVersion: 2020, locations: true });
+        var ast = acorn.parse(code.replace(envNameRegex, ""), { ecmaVersion: "latest", locations: true });
 
         var astTransformPasses = [];
 
@@ -1140,7 +1140,7 @@ class PJSCodeInjector {
             var transformedCode = this.transformCode(code, context, mutatingCalls);
             var funcBody = "var " + this.envName + " = context;\n" + ("(function(){\n" + transformedCode + "\n}).apply(" + topLevelThis + ");");
             var func = new Function("context", funcBody);
-            console.log(func.toString())
+            
             func(context);
 
         } catch (e) {
