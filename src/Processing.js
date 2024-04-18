@@ -16346,74 +16346,11 @@ var Processing = function (window, document, Math) {
         // Touch and Mouse event handling
         //////////////////////////////////////////////////////////////////////////
 
-        function calculateOffset(curElement, event) {
-            var element = curElement,
-                offsetX = 0,
-                offsetY = 0;
-
-            p.pmouseX = p.mouseX;
-            p.pmouseY = p.mouseY;
-
-            // Find element offset
-            if (element.offsetParent) {
-                do {
-                    offsetX += element.offsetLeft;
-                    offsetY += element.offsetTop;
-                } while (!!(element = element.offsetParent));
-            }
-
-            // Find Scroll offset
-            element = curElement;
-            do {
-                offsetX -= element.scrollLeft || 0;
-                offsetY -= element.scrollTop || 0;
-            } while (!!(element = element.parentNode));
-
-            // Add padding and border style widths to offset
-            offsetX += stylePaddingLeft;
-            offsetY += stylePaddingTop;
-
-            offsetX += styleBorderLeft;
-            offsetY += styleBorderTop;
-
-            // Take into account any scrolling done
-            offsetX += window.pageXOffset;
-            offsetY += window.pageYOffset;
-
-            return { 'X': offsetX, 'Y': offsetY };
-        }
 
         function updateMousePosition(curElement, event) {
-            var offset = calculateOffset(curElement, event);
-
-            // Dropping support for IE clientX and clientY, switching to pageX and pageY so we don't have to calculate scroll offset.
-            // Removed in ticket #184. See rev: 2f106d1c7017fed92d045ba918db47d28e5c16f4
-            p.mouseX = event.pageX - offset.X;
-            p.mouseY = event.pageY - offset.Y;
-        }
-
-        // Return a TouchEvent with canvas-specific x/y co-ordinates
-        function addTouchEventOffset(t) {
-            var offset = calculateOffset(t.changedTouches[0].target, t.changedTouches[0]),
-                i;
-
-            for (i = 0; i < t.touches.length; i++) {
-                var touch = t.touches[i];
-                touch.offsetX = touch.pageX - offset.X;
-                touch.offsetY = touch.pageY - offset.Y;
-            }
-            for (i = 0; i < t.targetTouches.length; i++) {
-                var targetTouch = t.targetTouches[i];
-                targetTouch.offsetX = targetTouch.pageX - offset.X;
-                targetTouch.offsetY = targetTouch.pageY - offset.Y;
-            }
-            for (i = 0; i < t.changedTouches.length; i++) {
-                var changedTouch = t.changedTouches[i];
-                changedTouch.offsetX = changedTouch.pageX - offset.X;
-                changedTouch.offsetY = changedTouch.pageY - offset.Y;
-            }
-
-            return t;
+            console.log("-", event.offsetX,  event.offsetY)
+            p.mouseX = event.offsetX;
+            p.mouseY = event.offsetY;
         }
 
         attachEventHandler(curElement, "touchstart", function (t) {
@@ -16438,7 +16375,6 @@ var Processing = function (window, document, Math) {
                 p.touchEnd !== undefined || p.touchCancel !== undefined) {
                 attachEventHandler(curElement, "touchstart", function (t) {
                     if (p.touchStart !== undefined) {
-                        t = addTouchEventOffset(t);
                         p.touchStart(t);
                     }
                 });
@@ -16446,21 +16382,18 @@ var Processing = function (window, document, Math) {
                 attachEventHandler(curElement, "touchmove", function (t) {
                     if (p.touchMove !== undefined) {
                         t.preventDefault(); // Stop the viewport from scrolling
-                        t = addTouchEventOffset(t);
                         p.touchMove(t);
                     }
                 });
 
                 attachEventHandler(curElement, "touchend", function (t) {
                     if (p.touchEnd !== undefined) {
-                        t = addTouchEventOffset(t);
                         p.touchEnd(t);
                     }
                 });
 
                 attachEventHandler(curElement, "touchcancel", function (t) {
                     if (p.touchCancel !== undefined) {
-                        t = addTouchEventOffset(t);
                         p.touchCancel(t);
                     }
                 });

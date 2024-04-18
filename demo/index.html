@@ -4,6 +4,8 @@
     SIKNSIKNSIKNSIKNSIKNSIKNSIKNSIKNSIKNSIKNSIKNSIKNSIKN
     
        KhanPJS, run PJS programs anywhere you want :D
+       
+           https://github.com/L1quidH2O/KhanPJS
     
     SIKNSIKNSIKNSIKNSIKNSIKNSIKNSIKNSIKNSIKNSIKNSIKNSIKN
     
@@ -144,12 +146,23 @@
             width: 100%;
             height: 100%;
         }
-        .output{
+        .alloutput{
             display:flex;
             flex-direction: column;
             box-shadow: 0 0 20px rgba(0,0,0,0.2);
             z-index: 1;
             flex-shrink: 2;
+        }
+        .live-editor-output{
+            width: 100%;
+            height: 100%;
+        }
+        .output{
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
         #KhanPJS{
             max-width: 50vw;
@@ -310,7 +323,7 @@
             .middle{
                 flex-direction: column;
             }
-            .output{
+            .alloutput{
                 flex-direction: row;
             }
         }
@@ -457,8 +470,12 @@
         </div>
         <div class="middle">
             <div id="editor"></div>
-            <div class="output">
-                <canvas id="KhanPJS"></canvas>
+            <div class="alloutput">
+                <div id="live-editor-output">
+                    <div class="output">
+                        <canvas id="KhanPJS"></canvas>
+                    </div>
+                </div>
                 <div class="stats">
                     <canvas id="stats" height="100"></canvas>
                     <div class="console"></div>
