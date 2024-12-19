@@ -337,7 +337,7 @@ ASTTransforms.rewriteContextVariables = function(envName, context){
                     }
                 }
             } else if (node.type === "VariableDeclaration") {
-
+                
                 if (node.declarations.length === 1) {
                     // Single VariableDeclarators
                     var decl = node.declarations[0];
@@ -379,7 +379,7 @@ ASTTransforms.rewriteContextVariables = function(envName, context){
                     }
                 } else {
                     // Multiple VariableDeclarators
-
+                    
                     if (scopes.length === 1) {
                         if (["Program", "BlockStatement"].includes(parent.type)) {
                             // Before: var x = 5, y = 10, z;
@@ -403,9 +403,7 @@ ASTTransforms.rewriteContextVariables = function(envName, context){
                                 })
                             };
                         }
-                    } else if (node.declarations.some(function (decl) {
-                        return drawLoopMethods.includes(decl.id.name);
-                    })) {
+                    } else if (node.declarations.some(decl => drawLoopMethods.includes(decl.id.name))) {
                         // this is super edge case, it handles things that look like
                         // var draw = function() {
                         //     var x = 5, mouseClicked = function () { ... }, y = 10;
@@ -417,16 +415,25 @@ ASTTransforms.rewriteContextVariables = function(envName, context){
                         //     var y = 10;
                         // };
 
-                        return node.declarations.filter(function (decl) {
-                            return decl.init !== null;
-                        }).map(function (decl) {
-                            return b.VariableDeclaration([decl], node.kind);
-                        });
+                        return node.declarations
+                            .filter(decl => decl.init !== null)
+                            .map(decl => {
+                                return b.VariableDeclaration([decl], node.kind);
+                            });
                     }
                 }
             }
         }
     };
+
+    function isPJS(name){
+        for(let p = context; p.__proto__ !== null; p = p.__proto__){
+            if(p.hasOwnProperty(name)){
+                return true
+            }
+        }
+        return false;
+    }
 
     return {
         enter: old.enter,
@@ -437,12 +444,10 @@ ASTTransforms.rewriteContextVariables = function(envName, context){
                 scopes.pop();
             }
             else if(node.type === "Identifier"){
-                
-                for(let p = context; p.__proto__ !== null; p = p.__proto__){
-                    if(p.hasOwnProperty(node.name)){
-                        return old.leave(node, path);
-                    }
-                }
+                if(isPJS(node.name)){ return old.leave(node, path); }
+            }
+            else if(node.type === "VariableDeclaration" && node.declarations.some(d=>isPJS(d.id.name))){
+                return old.leave(node, path);
             }
         }
     }
@@ -492,6 +497,29 @@ ASTTransforms.findResources = function (resources) {
     };
 };
 
+ASTTransforms.rewriteFunctionDeclarations = {
+    leave(node, path) {
+        if (node.type === "FunctionDeclaration") {
+            var decl = {
+                type: "VariableDeclarator",
+                id: {
+                    type: "Identifier",
+                    name: node.id.name
+                },
+                init: {
+                    type: "FunctionExpression",
+                    id: null,
+                    params: node.params,
+                    body: node.body,
+                    generator: node.generator,
+                    expression: node.expression,
+                    async: node.async
+                }
+            };
+            return b.VariableDeclaration([decl], "var");
+        }
+    }
+};
 
 window.ASTTransforms = ASTTransforms;
 window.ASTBuilder = ASTTransforms;

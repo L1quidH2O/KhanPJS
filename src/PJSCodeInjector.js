@@ -970,7 +970,8 @@ class PJSCodeInjector {
         } else {
             astTransformPasses.push(ASTTransforms.checkForBannedProps(["__env__"]));
         }
-        
+        // rewriteFunctionDeclarations turns function x() into var x = function
+        astTransformPasses.push(ASTTransforms.rewriteFunctionDeclarations);
 
         // loopProtector adds LoopProtector code which checks how long it's
         // taking to run event loop and will throw if it's taking too long.
@@ -981,7 +982,7 @@ class PJSCodeInjector {
 
         
         walkAST(ast, null, astTransformPasses);
-
+        
         // rewriteContextVariables has to be done separately because loopProtector
         // adds variable references which need to be rewritten.
         // Profile first before trying to combine these two passes.  It may be
