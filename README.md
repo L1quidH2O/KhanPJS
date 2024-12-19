@@ -1,11 +1,11 @@
 # KhanPJS.js
-KhanPJS is just Khanacademy's PJS enviroment but optimized and without the need of their live editor.
+KhanPJS is just Khanacademy's PJS enviroment.
 
-Almost every PJS program can run in it. The only limitations being things i intentionally removed.
+Almost every PJS program can run in it.
 
 ## CDN
     https://cdn.jsdelivr.net/gh/L1quidH2O/KhanPJS/build/KhanPJS.min.js
--------------------------------
+
 ## HOW TO USE
 ```js
 var pjs = new KhanPJS({ // default values:
@@ -31,7 +31,7 @@ The first paramerer is an options object, all options are optional.
 * infiniteLoopCallback, defaults to empty function
 * startupTimeout, maximum time to wait for a program to load (some programs take a long time to load terrain/textures). defaults to 2000
 * programTimeout, maximum time program is allowed to freeze. defaults to 500
-* loopCheck, amount of iterations it takes before checking if theres an infinity loop. defaults to 1000. (hard to explain so see code)
+* loopCheck, amount of iterations it takes before checking if theres an infinity loop. defaults to 1000.
     ```js
     for(var i = 0; i < 10000; i ++){
         //---placed by KhanPJS---
@@ -62,18 +62,10 @@ pjs.loopCheck = 1000;
 // other methods arent important
 ```
 
--------------------------------
+## NOTES
+* Some hacky code may no longer work
 
-## FEATURES
-* Added ES6 `class` support
-* Optimized some parts of Processing.js
-
--------------------------------
-
-## LIMITATIONS
-* Some "hacks" that are used by user programs but arent used by KhanPJS now have the same return type but no functionality (ex: `PJSCodeInjector.propListString` returns an empty string)
-
-* Removed third party libraries that might be used by some user programs (ex: `i18n`)
+* Removed third party libraries that mightve be used by some user programs
 
 * Only these classes are in the top scope
     - ASTTransforms
@@ -87,8 +79,3 @@ pjs.loopCheck = 1000;
     - LoopProtector
     - PJSUtils
     - Processing
-
--------------------------------
-
-## NOTES:
-* Processing.js is huge and there are still some useless things in it.

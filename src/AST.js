@@ -1,12 +1,12 @@
 import { AllImages, OutputSounds } from "./KhanResources";
 
-var ASTBuilder = {
+let ASTBuilder = {
     /**
      * @param {Expression} left
      * @param {string} operator: "=", "+=", "-=", "*=", "/=", etc.
      * @param {Expression} right
      */
-    AssignmentExpression: function AssignmentExpression(left, operator, right) {
+    AssignmentExpression(left, operator, right) {
         return {
             type: "AssignmentExpression",
             left: left,
@@ -19,7 +19,7 @@ var ASTBuilder = {
      * @param {string} operator: "+", "-", "*", "/", "<", ">", "<=", ">=", etc.
      * @param {Expression} right
      */
-    BinaryExpression: function BinaryExpression(left, operator, right) {
+    BinaryExpression(left, operator, right) {
         return {
             type: "BinaryExpression",
             left: left,
@@ -30,7 +30,7 @@ var ASTBuilder = {
     /**
      * @param {Array} body: an array of Expressions
      */
-    BlockStatement: function BlockStatement(body) {
+    BlockStatement(body) {
         return {
             type: "BlockStatement",
             body: body
@@ -40,7 +40,7 @@ var ASTBuilder = {
      * @param {Expression} callee
      * @param {Array} args
      */
-    CallExpression: function CallExpression(callee, args) {
+    CallExpression(callee, args) {
         return {
             type: "CallExpression",
             callee: callee,
@@ -50,7 +50,7 @@ var ASTBuilder = {
     /**
      * @param {Expression} expression
      */
-    ExpressionStatement: function ExpressionStatement(expression) {
+        ExpressionStatement(expression) {
         return {
             type: "ExpressionStatement",
             expression: expression
@@ -59,7 +59,7 @@ var ASTBuilder = {
     /**
      * @param {string} name
      */
-    Identifier: function Identifier(name) {
+    Identifier(name) {
         return {
             type: "Identifier",
             name: name
@@ -70,9 +70,7 @@ var ASTBuilder = {
      * @param {Statement} consequent: usually a BlockStatement
      * @param {Statement?} alternate: usually a BlockStatement when not omitted
      */
-    IfStatement: function IfStatement(test, consequent) {
-        var alternate = arguments.length <= 2 || arguments[2] === undefined ? null : arguments[2];
-
+    IfStatement(test, consequent, alternate = null) {
         return {
             type: "IfStatement",
             test: test,
@@ -83,7 +81,7 @@ var ASTBuilder = {
     /**
      * @param {Number|String|null|RegExp} value
      */
-    Literal: function Literal(value) {
+    Literal(value) {
         return {
             type: "Literal",
             value: value
@@ -94,9 +92,7 @@ var ASTBuilder = {
      * @param {Expression} property
      * @param {Boolean?} computed - true => obj[prop], false => obj.prop
      */
-    MemberExpression: function MemberExpression(object, property) {
-        var computed = arguments.length <= 2 || arguments[2] === undefined ? false : arguments[2];
-
+        MemberExpression(object, property, computed = false) {
         return {
             type: "MemberExpression",
             object: object,
@@ -109,7 +105,7 @@ var ASTBuilder = {
      * @param {string} operator: "++" or "--"
      * @param {Boolean} prefix: true => ++argument, false => argument++
      */
-    UpdateExpression: function UpdateExpression(argument, operator, prefix) {
+    UpdateExpression(argument, operator, prefix) {
         return {
             type: "UpdateExpression",
             argument: argument,
@@ -121,18 +117,12 @@ var ASTBuilder = {
      * @param {Array} declarations
      * @param {string} kind: "var", "let", "const"
      */
-    VariableDeclaration: function VariableDeclaration(declarations, kind) {
+    VariableDeclaration(declarations, kind) {
         return {
             type: "VariableDeclaration",
             declarations: declarations,
             kind: kind
         };
-    },
-    ArrayPattern: function (elements) {
-        return {
-            type: "ArrayPattern",
-            elements: elements
-        }
     }
 };
 
@@ -145,127 +135,79 @@ var ASTBuilder = {
  * @param visitors: One or more objects containing 'enter' and/or 'leave'
  *                  methods which accept a single AST node as an argument.
  */
-var walkAST = function (node, path, visitors) {
+let walkAST = function(node, path, visitors) {
     if (path === null) {
         path = [node];
     } else {
         path.push(node);
     }
-    visitors.forEach(function (visitor) {
+    visitors.forEach(visitor => {
         if (visitor.enter) {
             visitor.enter(node, path);
         }
     });
-    var _iteratorNormalCompletion = true;
-    var _didIteratorError = false;
-    var _iteratorError = undefined;
-
-    try {
-        for (var _iterator = Object.keys(node)[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
-            var prop = _step.value;
-
-            if (node.hasOwnProperty(prop) && node[prop] instanceof Object) {
-                if (Array.isArray(node[prop])) {
-                    var i = 0;
-                    while (i < node[prop].length) {
-                        // Esprima represents empty slots as null, so set child to
-                        // a dummy node if the initial node is falsy in order to prevent
-                        // a silent crash
-                        var child = node[prop][i] || { type: "EmptySlot" };
-                        // Skip over the number of replacements.  This is usually
-                        // just 1, but in situations involving multiple variable
-                        // declarations we end up replacing one statement with
-                        // multiple statements and we need to step over all of them.
-                        i += walkAST(child, path, visitors);
-                    }
-                } else if (node[prop].type) {
-                    // don't walk metadata props like "loc"
-                    walkAST(node[prop], path, visitors);
+    for (let prop of Object.keys(node)) {
+        if (node.hasOwnProperty(prop) && node[prop] instanceof Object) {
+            if (Array.isArray(node[prop])) {
+                let i = 0;
+                while (i < node[prop].length) {
+                    // Esprima represents empty slots as null, so set child to
+                    // a dummy node if the initial node is falsy in order to prevent
+                    // a silent crash
+                    let child = node[prop][i] || { type: "EmptySlot" };
+                    // Skip over the number of replacements.  This is usually
+                    // just 1, but in situations involving multiple variable
+                    // declarations we end up replacing one statement with
+                    // multiple statements and we need to step over all of them.
+                    i += walkAST(child, path, visitors);
                 }
-            }
-        }
-    } catch (err) {
-        _didIteratorError = true;
-        _iteratorError = err;
-    } finally {
-        try {
-            if (!_iteratorNormalCompletion && _iterator["return"]) {
-                _iterator["return"]();
-            }
-        } finally {
-            if (_didIteratorError) {
-                throw _iteratorError;
+            } else if (node[prop].type) { // don't walk metadata props like "loc"
+                walkAST(node[prop], path, visitors);
             }
         }
     }
-
-    var step = 1;
-    visitors.forEach(function (visitor) {
+    let step = 1;
+    visitors.forEach(visitor => {
         if (visitor.leave) {
-            (function () {
-                var replacement = visitor.leave(node, path);
-                if (replacement) {
-                    if (replacement instanceof Array) {
-                        var _parent = path[path.length - 2];
-                        if (_parent.body) {
-                            var index = _parent.body.findIndex(function (child) {
-                                return child === node;
-                            });
-                            Array.prototype.splice.apply(_parent.body, [index, 1].concat(replacement));
-                            // Since we replaced one statement with multiple statements
-                            // we'll want to skip over all of them so set 'step' to
-                            // the number of replacements.
-                            step = replacement.length;
-                        }
-                    } else {
-                        Object.keys(node).forEach(function (key) {
-                            delete node[key];
-                        });
-                        Object.keys(replacement).forEach(function (key) {
-                            node[key] = replacement[key];
-                        });
+            let replacement = visitor.leave(node, path);
+            if (replacement) {
+                if (replacement instanceof Array) {
+                    let parent = path[path.length - 2];
+                    if (parent.body) {
+                        let index = parent.body.findIndex(child => child === node);
+                        Array.prototype.splice.apply(parent.body, [index, 1].concat(replacement));
+                        // Since we replaced one statement with multiple statements
+                        // we'll want to skip over all of them so set 'step' to
+                        // the number of replacements.
+                        step = replacement.length;
                     }
+                } else {
+                    Object.keys(node).forEach(key => {
+                        delete node[key];
+                    });
+                    Object.keys(replacement).forEach(key => {
+                        node[key] = replacement[key];
+                    });
                 }
-            })();
+            }
         }
     });
     path.pop();
     return step;
 };
 
-var ASTTransforms = {};
+let ASTTransforms = {};
 
-var b = ASTBuilder;
+let b = ASTBuilder;
 
-/**
- * Visitor object which adds line and column information as additional args,
- * e.g. Program.assertEqual(a, b) => Program.assertEqual(a, b, <line>, <column>)
- * where <line> and <column> are number literals.
-**/
-ASTTransforms.rewriteAssertEquals = {
-    leave: function leave(node, path) {
-        if (node.type === "Identifier" && node.name === "Program") {
-            var _parent = path[path.length - 2];
-            if (_parent.type === "MemberExpression" && _parent.object === node && _parent.property.type === "Identifier" && _parent.property.name === "assertEqual") {
-
-                var grandparent = path[path.length - 3];
-                if (grandparent.type === "CallExpression") {
-                    grandparent.arguments.push(b.Literal(grandparent.loc.start.line), b.Literal(grandparent.loc.start.column));
-                }
-            }
-        }
-    }
-};
-
-var isReference = function isReference(node, parent) {
-
+var isReference = function(node, parent) {
     // we're a property key so we aren't referenced
     if (parent.type === "Property" && parent.key === node) {
         return false;
     }
 
     // we're a variable declarator id so we aren't referenced
-    if (parent.type === "VariableDeclarator" && (parent.id === node || parent.id.type === "ArrayPattern")) {
+    if (parent.type === "VariableDeclarator" && parent.id === node) {
         return false;
     }
 
@@ -281,9 +223,13 @@ var isReference = function isReference(node, parent) {
     return !isMemberExpression || isComputedProperty || isObject;
 };
 
-var drawLoopMethods = ["draw", "mouseClicked", "mouseDragged", "mouseMoved", "mousePressed", "mouseReleased", "mouseScrolled", "mouseOver", "mouseOut", "touchStart", "touchEnd", "touchMove", "touchCancel", "keyPressed", "keyReleased", "keyTyped"];
 
-var scopes = [{}];
+let drawLoopMethods = ["draw", "mouseClicked", "mouseDragged", "mouseMoved",
+    "mousePressed", "mouseReleased", "mouseScrolled", "mouseOver",
+    "mouseOut", "touchStart", "touchEnd", "touchMove", "touchCancel",
+    "keyPressed", "keyReleased", "keyTyped"];
+
+let scopes = [{}];
 
 /**
  * Returns a visitor object that will rewrite all global variable references to
@@ -294,37 +240,34 @@ var scopes = [{}];
  * @param {string} envName
  * @returns {Object}
  */
-ASTTransforms.rewriteContextVariables = function (envName, context) {
+ASTTransforms.rewriteContextVariables = function(envName, context) {
     return {
-        enter: function enter(node, path) {
+        enter(node, path) {
             // Create a new scope whenever we encounter a function declaration/expression
             // and add all of its paramters to this new scope.
             if (/^Function/.test(node.type)) {
-                (function () {
-                    var scope = {};
-                    node.params.forEach(function (param) {
-                        scope[param.name] = true;
-                    });
-                    scopes.push(scope);
-                })();
+                let scope = {};
+                node.params.forEach(param => {
+                    scope[param.name] = true;
+                });
+                scopes.push(scope);
             }
             // Add any variables declared to the current scope.  This handles
             // variable declarations with multiple declarators, e.g. var x = 5, y = 10;
             // because we are handling all of the declarators directly (as opposed
             // to iterating over node.declarators when node.type === "VariableDeclaration").
             if (node.type === "VariableDeclarator") {
-                var scope = scopes[scopes.length - 1];
+                let scope = scopes[scopes.length - 1];
                 scope[node.id.name] = true;
             }
         },
-        leave: function leave(node, path) {
+        leave(node, path) {
             var parent = path[path.length - 2];
-            
-            if (node.type === "Identifier") {
-                if (parent.type === "ArrayPattern" ? isReference(node, path[path.length - 3]) : isReference(node, parent)) {
 
-                    var scopeIndex = -1;
-                    for (var i = scopes.length - 1; i > -1; i--) {
+            if (node.type === "Identifier") {
+                if (isReference(node, parent)) {
+                    let scopeIndex = -1;
+                    for (let i = scopes.length - 1; i > -1; i--) {
                         if (scopes[i][node.name]) {
                             scopeIndex = i;
                             break;
@@ -332,7 +275,7 @@ ASTTransforms.rewriteContextVariables = function (envName, context) {
                     }
 
                     // Don't rewrite function parameters.
-                    var isParam = /^Function/.test(parent.type) && parent.params.includes(node);
+                    let isParam = /^Function/.test(parent.type) && parent.params.includes(node);
                     if (isParam) {
                         return;
                     }
@@ -347,20 +290,22 @@ ASTTransforms.rewriteContextVariables = function (envName, context) {
                     if (["undefined", "Infinity", "NaN", "arguments"].includes(node.name)) {
                         return;
                     }
-                    
+
                     // Prefix identifiers that exist in the context object and
                     // have not been defined in any scope.
                     // Also, prefix any other identifers that
                     // exist at the global scope.
-                    if (node.name in context && scopeIndex === -1 || scopeIndex === 0) {
-                        return b.MemberExpression(b.Identifier(envName), b.Identifier(node.name));
+                    if ((node.name in context && scopeIndex === -1) ||
+                            scopeIndex === 0) {
+                        return b.MemberExpression(
+                            b.Identifier(envName), b.Identifier(node.name));
                     }
                 }
             } else if (node.type === "VariableDeclaration") {
-
                 if (node.declarations.length === 1) {
                     // Single VariableDeclarators
-                    var decl = node.declarations[0];
+
+                    let decl = node.declarations[0];
 
                     // If the current variable declaration has an "init" value of null
                     //  (IE. no init value given to parser), and the current node type
@@ -370,30 +315,21 @@ ASTTransforms.rewriteContextVariables = function (envName, context) {
                         return;
                     }
 
-
-
                     // Rewrite all function declarations, e.g.
                     // var foo = function () {} => __env__.foo = function () {}
                     // that appear in the global scope. Draw loop methods aren't
                     // special, they should be treated in the exact same way.
                     if (scopes.length === 1) {
-
-                        /*
-                        for array destructuring expressions
-                            var [a,b,c] = [1,2,3];
-                        becomes
-                            [a, b, c] = [1,2,3];
-                        then in AST.rewriteArrayPattern it becomes
-                            [__env__.a, __env__.b, __env__.c] = [1,2,3];
-                        */
-                        if (decl.id.type === "ArrayPattern") {
-                            return b.ExpressionStatement(b.AssignmentExpression(decl.id, "=", decl.init))
-                        }
-
-
-
                         if (["Program", "BlockStatement", "SwitchCase"].includes(parent.type)) {
-                            return b.ExpressionStatement(b.AssignmentExpression(b.MemberExpression(b.Identifier(envName), b.Identifier(decl.id.name)), "=", decl.init));
+                            return b.ExpressionStatement(
+                                b.AssignmentExpression(
+                                    b.MemberExpression(
+                                        b.Identifier(envName),
+                                        b.Identifier(decl.id.name)),
+                                    "=",
+                                    decl.init
+                                )
+                            );
                         } else {
                             if (["ForStatement"].includes(parent.type)) {
                                 // Handle variables declared inside a 'for' statement
@@ -401,7 +337,11 @@ ASTTransforms.rewriteContextVariables = function (envName, context) {
                                 //
                                 // e.g. for (var i = 0; i < 10; i++) { ... } =>
                                 //      for (__env__.i = 0; __env__.i < 10; __env__.i++)
-                                return b.AssignmentExpression(b.MemberExpression(b.Identifier(envName), b.Identifier(decl.id.name)), "=", decl.init);
+                                return b.AssignmentExpression(
+                                    b.MemberExpression(b.Identifier(envName),b.Identifier(decl.id.name)),
+                                    "=",
+                                    decl.init
+                                );
                             } else if (["ForInStatement"].includes(parent.type)) {
                                 // Handle variables declared inside a 'for in' statement,
                                 //  occuring in the global scope.
@@ -421,27 +361,34 @@ ASTTransforms.rewriteContextVariables = function (envName, context) {
                             // Before: var x = 5, y = 10, z;
                             // After: __env__.x = 5; __env__.y = 10;
 
-                            return node.declarations.filter(function (decl) {
-                                return decl.init !== null;
-                            }).map(function (decl) {
-                                return b.ExpressionStatement(b.AssignmentExpression(b.MemberExpression(b.Identifier(envName), b.Identifier(decl.id.name)), "=", decl.init));
-                            });
+                            return node.declarations
+                                .filter(decl => decl.init !== null)
+                                .map(decl => b.ExpressionStatement(
+                                    b.AssignmentExpression(
+                                        b.MemberExpression(b.Identifier(envName),b.Identifier(decl.id.name)),
+                                        "=",
+                                        decl.init
+                                    )
+                                ));
                         } else {
                             // Before: for (var i = 0, j = 0; i * j < 100; i++, j++) { ... }
                             // After: for (__env__.i = 0, __env__.j = 0; __env__.i * __env__.j < 100; ...) { ... }
 
                             return {
                                 type: "SequenceExpression",
-                                expressions: node.declarations.filter(function (decl) {
-                                    return decl.init !== null;
-                                }).map(function (decl) {
-                                    return b.AssignmentExpression(b.MemberExpression(b.Identifier(envName), b.Identifier(decl.id.name)), "=", decl.init);
-                                })
+                                expressions: node.declarations
+                                    .filter(decl => decl.init !== null)
+                                    .map(decl => {
+                                        return b.AssignmentExpression(
+                                            b.MemberExpression(b.Identifier(envName),b.Identifier(decl.id.name)),
+                                            "=",
+                                            decl.init
+                                        );
+                                    })
                             };
                         }
-                    } else if (node.declarations.some(function (decl) {
-                        return drawLoopMethods.includes(decl.id.name);
-                    })) {
+
+                    } else if (node.declarations.some(decl => drawLoopMethods.includes(decl.id.name))) {
                         // this is super edge case, it handles things that look like
                         // var draw = function() {
                         //     var x = 5, mouseClicked = function () { ... }, y = 10;
@@ -453,13 +400,14 @@ ASTTransforms.rewriteContextVariables = function (envName, context) {
                         //     var y = 10;
                         // };
 
-                        return node.declarations.filter(function (decl) {
-                            return decl.init !== null;
-                        }).map(function (decl) {
-                            return b.VariableDeclaration([decl], node.kind);
-                        });
+                        return node.declarations
+                            .filter(decl => decl.init !== null)
+                            .map(decl => {
+                                return b.VariableDeclaration([decl], node.kind);
+                            });
                     }
                 }
+
             } else if (/^Function/.test(node.type)) {
                 // Remove all local variables from the scopes stack as we exit
                 // the function expression/declaration.
@@ -469,23 +417,13 @@ ASTTransforms.rewriteContextVariables = function (envName, context) {
     };
 };
 
-ASTTransforms.rewriteArrayPattern = function (envName, context) {
+ASTTransforms.checkForBannedProps = function(bannedProps) {
     return {
-        leave: function leave(node, path) {
-            if (node.type === "ArrayPattern" && scopes.length === 1) {
-                return b.ArrayPattern(node.elements.map(r => b.MemberExpression(b.Identifier(envName), b.Identifier(r.name))));
-            }
-        }
-    }
-};
-
-ASTTransforms.checkForBannedProps = function (bannedProps) {
-    return {
-        leave: function leave(node, path) {
+        leave(node, path) {
             if (node.type === "Identifier" && bannedProps.includes(node.name)) {
                 throw {
                     row: node.loc.start.line - 1,
-                    html: "Use of <code>" + node.name + "</code> as an identifier is prohibited."
+                    html: `Use of <code>${node.name}</code> as an identifier is prohibited.`
                 };
             }
         }
@@ -499,24 +437,24 @@ ASTTransforms.checkForBannedProps = function (bannedProps) {
  * @param {Object} resources An empty Object.
  * @returns {Object} An AST Visitor.
  */
-ASTTransforms.findResources = function (resources) {
+ASTTransforms.findResources = function(resources) {
     return {
-        leave: function leave(node, path) {
-            if (node.type === "Literal" && typeof node.value === "string") {
+        leave(node, path) {
+            if (node.type === "Literal" && typeof(node.value) === "string") {
 
-                AllImages.forEach(function (group) {
-                    group.images.forEach(function (image) {
+                AllImages.forEach(group => {
+                    group.images.forEach(image => {
                         if (node.value.indexOf(image) !== -1) {
-                            resources[group.groupName + "/" + image + ".png"] = true;
+                            resources[`${group.groupName}/${image}.png`] = true;
                         }
                     });
                 });
 
-                OutputSounds.forEach(function (cls) {
-                    cls.groups.forEach(function (group) {
-                        group.sounds.forEach(function (sound) {
+                OutputSounds.forEach(cls => {
+                    cls.groups.forEach(group => {
+                        group.sounds.forEach(sound => {
                             if (node.value.indexOf(sound) !== -1) {
-                                resources[group.groupName + "/" + sound + ".mp3"] = true;
+                                resources[`${group.groupName}/${sound}.mp3`] = true;
                             }
                         });
                     });
@@ -524,10 +462,11 @@ ASTTransforms.findResources = function (resources) {
             }
         }
     };
-};
+};    
+
 
 ASTTransforms.rewriteFunctionDeclarations = {
-    leave: function leave(node, path) {
+    leave(node, path) {
         if (node.type === "FunctionDeclaration") {
             var decl = {
                 type: "VariableDeclarator",
@@ -543,27 +482,6 @@ ASTTransforms.rewriteFunctionDeclarations = {
                     generator: node.generator,
                     expression: node.expression,
                     async: node.async
-                }
-            };
-            return b.VariableDeclaration([decl], "var");
-        }
-    }
-};
-
-ASTTransforms.rewriteClassDeclarations = {
-    leave: function leave(node, path) {
-        if (node.type === "ClassDeclaration") {
-            var decl = {
-                type: "VariableDeclarator",
-                id: {
-                    type: "Identifier",
-                    name: node.id.name
-                },
-                init: {
-                    type: "ClassExpression",
-                    id: null,
-                    superClass: node.superClass,
-                    body: node.body
                 }
             };
             return b.VariableDeclaration([decl], "var");

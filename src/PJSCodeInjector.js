@@ -10,7 +10,7 @@ var PJSUtils = {
      * @param {Function} func
      * @returns {string}
      */
-    codeFromFunction: function codeFromFunction(func) {
+    codeFromFunction(func) {
         var code = func.toString();
         code = code.substr(code.indexOf("{") + 1);
         return code.substr(0, code.length - 1);
@@ -22,14 +22,14 @@ var PJSUtils = {
      * @param {string} code
      * @returns {string}
      */
-    cleanupCode: function cleanupCode(code) {
-        var lines = code.split("\n").filter(function (line) {
+    cleanupCode(code) {
+        var lines = code.split("\n").filter(function(line) {
             return line !== "";
         });
 
         var indent = lines[0].length - lines[0].trim().length;
 
-        return lines.map(function (line) {
+        return lines.map(function(line) {
             return line.substring(indent);
         }).join("\n").trim();
     }
@@ -958,15 +958,19 @@ class PJSCodeInjector {
         // transformed from a previous call to exec().
 
         if (!mutatingCalls) {
-            astTransformPasses.push(ASTTransforms.checkForBannedProps(["__env__", "KAInfiniteLoopCount", "KAInfiniteLoopProtect", "KAInfiniteLoopSetTimeout"]));
+            astTransformPasses.push(ASTTransforms.checkForBannedProps([
+                "__env__",
+                "KAInfiniteLoopCount",
+                "KAInfiniteLoopProtect",
+                "KAInfiniteLoopSetTimeout"
+            ]));
         } else {
-            astTransformPasses.push(ASTTransforms.checkForBannedProps(["__env__"]));
+            astTransformPasses.push(ASTTransforms.checkForBannedProps([
+                "__env__"
+            ]));
         }
         // rewriteFunctionDeclarations turns function x() into var x = function
         astTransformPasses.push(ASTTransforms.rewriteFunctionDeclarations);
-
-        // rewriteClassDeclarations turns class x{} into var x = class{}
-        astTransformPasses.push(ASTTransforms.rewriteClassDeclarations);
 
         // loopProtector adds LoopProtector code which checks how long it's
         // taking to run event loop and will throw if it's taking too long.
@@ -974,22 +978,17 @@ class PJSCodeInjector {
             astTransformPasses.push(loopProtector);
         }
 
-        // rewriteAssertEquals adds line and column arguments to calls to
-        // Program.assertEquals.
-        astTransformPasses.push(ASTTransforms.rewriteAssertEquals);
-
-
         try {
             walkAST(ast, null, astTransformPasses);
         } catch (e) {
             return e;
         }
-
+        
         // rewriteContextVariables has to be done separately because loopProtector
         // adds variable references which need to be rewritten.
         // Profile first before trying to combine these two passes.  It may be
         // that parsing is dominating
-        walkAST(ast, null, [ASTTransforms.rewriteArrayPattern(envName, context), ASTTransforms.rewriteContextVariables(envName, context)]);
+        walkAST(ast, null, [ASTTransforms.rewriteContextVariables(envName, context)]);
 
         code = "";
         if (mutatingCalls) {
@@ -1002,8 +1001,7 @@ class PJSCodeInjector {
                 return envName + "." + call;
             }).join("\n");
         }
-
-        // console.log(code + escodegen.generate(ast)) :)
+        
         return code + escodegen.generate(ast);
     }
 
