@@ -460,12 +460,7 @@
                         <div class="context-menu-button" id="Auto_Scroll">Auto Scroll</div>
                     </div>
                 </div>
-                <div class="top-button has-context-menu">Fullscreen
-                    <div class="context-menu right">
-                        <div class="context-menu-button" id="View_Demo_in_Fullscreen">View Demo in Fullscreen</div>
-                        <div class="context-menu-button" id="View_PJS_in_Fullscreen">View PJS in Fullscreen</div>
-                    </div>
-                </div>
+                <div class="top-button" id="Share_Code">Share</div>
             </div>
         </div>
         <div class="middle">
@@ -490,7 +485,7 @@
                 <div class="popup-box-close" title="Close Popup"></div>
             </div>
             <div class="popup-box-wrapper">
-                <div class="popup-box-txt">siknsikn</div>
+                <div class="popup-box-txt">popup</div>
             </div>
         </div>
     </div>
@@ -500,10 +495,10 @@
 <script src="https://cdn.jsdelivr.net/gh/ajaxorg/ace-builds/src-min/theme-one_dark.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/ajaxorg/ace-builds/src-min/ext-language_tools.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/ajaxorg/ace-builds/src-min/ext-beautify.js"></script>
-<script src="../build/KhanPJS.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
+
 <script type>
-    // code is thrown in anonymous function so top scope doesnt get dirtied and confuse user, ace editor fills window scope with few things but i dont think it would be that big of a problem
-    (function(){
+    (async function(){
         var beautify = ace.require("ace/ext/beautify");
         var editor = ace.edit("editor");
         editor.session.setMode("ace/mode/javascript")
@@ -513,46 +508,8 @@
             enableLiveAutocompletion: true
         })
         editor.setTheme("ace/theme/textmate")
+        editor.setValue("size(400, 400, P2D);")
 
-        
-        var pjs = new KhanPJS({
-            canvas: document.getElementById("KhanPJS")
-        })
-
-        var stats = document.getElementById("stats");
-        var ctx = stats.getContext("2d");
-        var barWidth = 3;
-        var graphTop = 30;
-        var prevFPS, prevMB;
-        var darkMode = false;
-
-        setInterval(()=>{
-            var fpsR = (stats.height-graphTop)/60;
-            var mbR = (stats.height-graphTop)/(performance.memory.jsHeapSizeLimit>>>20);
-            let fps = pjs.processing.__frameRate|0;
-            let mb = performance.memory.usedJSHeapSize>>>20;
-            let half_width = Math.round(stats.width/2);
-            stats.width = stats.offsetWidth;
-            
-            
-            if(prevMB){ctx.putImageData(prevMB, half_width-barWidth, graphTop)}
-            ctx.clearRect(0, 0, half_width, stats.height);
-            if(prevFPS){ctx.putImageData(prevFPS, -barWidth, graphTop)}
-
-            ctx.font = "13px 'Segoe UI', Tahoma, 'Noto Sans', Geneva, Verdana, sans-serif"
-            ctx.fillStyle = darkMode ? "rgb(220, 220, 220)" : "black";
-            ctx.fillText(fps + " FPS", 5, 15)
-            ctx.fillText(mb + " MB", half_width + 5, 15)
-            ctx.fillStyle = `rgb(${(1-fps/60)*255}, ${Math.min(fps, 30)/30*255}, 0)`;
-            ctx.fillRect(half_width-barWidth, stats.height-fps*fpsR, barWidth, fps*fpsR)
-            ctx.fillStyle = `rgb(111, 0, 255)`;
-            ctx.fillRect(stats.width-barWidth, stats.height-mb*mbR, barWidth, mb*mbR)
-            prevFPS = ctx.getImageData(0, graphTop, half_width, stats.height-graphTop);
-            prevMB = ctx.getImageData(half_width, graphTop, half_width, stats.height-graphTop);
-        }, 100)
-        
-        
-        
         var log = {
             ele: document.querySelector(".console"),
             autoScroll: false,
@@ -610,6 +567,59 @@
         log.info("Welcome to KhanPJS Demo")
         log.info("This console area is only for PJS related errors and KhanPJS related info and warnings. console.log() and debug() do not print here.")
         
+
+        const query = new URLSearchParams(window.location.search);
+        if(query.get("code")){
+            try{ editor.setValue(String.fromCharCode(...pako.inflate(Array.from(atob(query.get("code")),r=>r.charCodeAt())))); }
+            catch(e){ log.error("Failed to load code from search query:\n" + e); }
+        }
+
+        await new Promise((res, rej)=>{
+            query.get("next") && log.info("loading khanpjs-next");
+            const script = document.createElement('script');
+            script.src = `https://cdn.jsdelivr.net/gh/L1quidH2O/KhanPJS${query.get("next") ? '@khanpjs-next' : ''}/build/KhanPJS.min.js`;
+            document.head.appendChild(script);
+            script.onload = res;
+            script.onerror = rej;
+        }).catch(r=>alert("Could not load KhanPJS"));
+        
+        var pjs = new KhanPJS({
+            canvas: document.getElementById("KhanPJS")
+        })
+
+        var stats = document.getElementById("stats");
+        var ctx = stats.getContext("2d");
+        var barWidth = 3;
+        var graphTop = 30;
+        var prevFPS, prevMB;
+        var darkMode = false;
+
+        setInterval(()=>{
+            var fpsR = (stats.height-graphTop)/60;
+            var mbR = (stats.height-graphTop)/(performance.memory.jsHeapSizeLimit>>>20);
+            let fps = pjs.processing.__frameRate|0;
+            let mb = performance.memory.usedJSHeapSize>>>20;
+            let half_width = Math.round(stats.width/2);
+            stats.width = stats.offsetWidth;
+            
+            
+            if(prevMB){ctx.putImageData(prevMB, half_width-barWidth, graphTop)}
+            ctx.clearRect(0, 0, half_width, stats.height);
+            if(prevFPS){ctx.putImageData(prevFPS, -barWidth, graphTop)}
+
+            ctx.font = "13px 'Segoe UI', Tahoma, 'Noto Sans', Geneva, Verdana, sans-serif"
+            ctx.fillStyle = darkMode ? "rgb(220, 220, 220)" : "black";
+            ctx.fillText(fps + " FPS", 5, 15)
+            ctx.fillText(mb + " MB", half_width + 5, 15)
+            ctx.fillStyle = `rgb(${(1-fps/60)*255}, ${Math.min(fps, 30)/30*255}, 0)`;
+            ctx.fillRect(half_width-barWidth, stats.height-fps*fpsR, barWidth, fps*fpsR)
+            ctx.fillStyle = `rgb(111, 0, 255)`;
+            ctx.fillRect(stats.width-barWidth, stats.height-mb*mbR, barWidth, mb*mbR)
+            prevFPS = ctx.getImageData(0, graphTop, half_width, stats.height-graphTop);
+            prevMB = ctx.getImageData(half_width, graphTop, half_width, stats.height-graphTop);
+        }, 500)
+        
+        
         var localStorageAvailable = function(){
             try {
                 localStorage.setItem('wow', 'wow');
@@ -666,29 +676,12 @@
             }
         };
 
-        function popup(title, txt){
+        function popup(title, txt, innerHTML){
             document.querySelector(".popup-box-name").textContent = title;
-            document.querySelector(".popup-box-txt").textContent = txt;
+            document.querySelector(".popup-box-txt")[innerHTML ? "innerHTML" : "textContent"] = txt;
             document.querySelector(".popup").style.display = "flex";
         }
-
-        window.__getJSON = function(url) {
-            //https://www.khanacademy.org/cs/i/5204185468420096
-            return new Promise(resolve => {
-                if (!__getJSON.index) __getJSON.index = 0;
-                __getJSON.index++;
-                const script = document.createElement("script");
-                function realCallback(json) {
-                    script.remove();
-                    resolve(json);
-                }
-                __getJSON["c" + __getJSON.index] = realCallback;
-                script.src = url + (url.match(/\?/) ? "&" : "?") + "callback=__getJSON.c" + __getJSON.index;
-                document.body.appendChild(script);
-            })
-        }
-
-        //--------- context menu stuff ---------
+        
         document.querySelector("#Github").onclick = ()=>{
             window.open("https://github.com/L1quidH2O/KhanPJS");
         }
@@ -743,20 +736,17 @@
             let w = log.autoScroll = !log.autoScroll;
             log.info((w ? "Enabled" : "Disabled") + " Auto Scroll");
         }
+
+        document.querySelector("#Share_Code").onclick = ()=>{
+            const query = new URLSearchParams(window.location.search);
+            query.set("code", btoa(String.fromCharCode(...pako.deflate(editor.getValue()))));
+            const link = location.origin + location.pathname + '?' + query;
+            const a = document.createElement("a");
+            a.href = link;
+            a.textContent = link;
+            popup("Copy this link to share:", a.outerHTML, true);
+        }
         
-        document.querySelector("#View_Demo_in_Fullscreen").onclick = ()=>{
-            __getJSON("https://www.khanacademy.org/api/internal/scratchpads/5727765250228224?projection={%22revision%22:{%22code%22:1}}").then(r=>{
-                let w = window.open();
-                w.document.open();
-                w.document.write(r.revision.code);
-                w.document.close();
-            })
-        };
-
-        document.querySelector("#View_PJS_in_Fullscreen").onclick = ()=>{
-            log.error("I havent made fullscreen PJS and i dont really want to tbh");
-        };
-
         document.querySelector(".popup-box-close").onclick = ()=>{
             document.querySelector(".popup").style.display = "none";
         }
@@ -799,10 +789,6 @@
             exec: ()=>beautifyCode(),
             readOnly: true
         })
-        
-        if(window.location.origin === "https://www.kasandbox.org" && window.innerHeight <= 600){
-            popup("Fullscreen", 'This program is better in fullscreen.\nClick the "Fullscreen" dropdown at the top right then click "View Demo in Fullscreen"')
-        }
     })();
 </script>
 </html>

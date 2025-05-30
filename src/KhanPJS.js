@@ -82,7 +82,7 @@ class KhanPJS {
             this.originalState.width = width;
             this.originalState.height = height;
             this.originalEntries.find(e=>e[0] === "width")[1] = width;
-            this.originalEntries.find(e=>e[0] === "height")[1] = width;
+            this.originalEntries.find(e=>e[0] === "height")[1] = height;
 
             this.restart();
         }
