@@ -31,10 +31,8 @@ function PJSResourceCache(options) {
  * @returns {Promise}
  */
 PJSResourceCache.prototype.cacheResources = function (resources) {
-    var _this = this;
-
-    var promises = Object.keys(resources).map(function (filename) {
-        return _this.loadResource(filename);
+    var promises = Object.keys(resources).map((filename) => {
+        return this.loadResource(filename);
     });
     return Promise.all(promises);
 };
@@ -48,45 +46,45 @@ PJSResourceCache.prototype.loadResource = function (filename) {
 };
 
 PJSResourceCache.prototype.loadImage = function (filename) {
-    var _this2 = this;
-
-    return new Promise(function (resolve) {
+    return new Promise(resolve=>{
         var img = document.createElement("img");
 
-        img.onload = function () {
-            _this2.cache[filename] = img;
+        img.onload = ()=>{
+            this.cache[filename] = img;
             resolve();
         };
-        img.onerror = function () {
+        img.onerror = ()=>{
             resolve(); // always resolve
         };
 
-        img.src = /^(http:|https:)\/\//.test(filename) ? filename : "https://www.kasandbox.org/programming-images/" + filename;
-        _this2.imageHolder.appendChild(img);
+        img.src = /^(http:|https:)\/\//.test(filename)
+            ? filename
+            : "https://www.kasandbox.org/programming-images/" + filename;
+
+        this.imageHolder.appendChild(img);
     });
 };
 
 PJSResourceCache.prototype.loadSound = function (filename) {
-    var _this3 = this;
-
-    return new Promise(function (resolve) {
+    return new Promise(resolve=>{
         var audio = document.createElement("audio");
         var parts = filename.split("/");
 
-        var group = OutputSounds[0].groups.find(value => { if (value[groupName] !== parts[0]) { return false; } return true; }) //_findWhere()
-        var hasSound = group && group.sounds.includes(parts[1].replace(".mp3", ""));
+        var group = OutputSounds[0].groups.find((v) => v.groupName === parts[0] ); //_findWhere()
+        var hasSound = group &&
+            group.sounds.includes(parts[1].replace(".mp3", ""));
         if (!hasSound) {
             resolve();
             return;
         }
 
         audio.preload = "auto";
-        audio.oncanplaythrough = function () {
-            _this3.cache[filename] = {
+        audio.oncanplaythrough = ()=>{
+            this.cache[filename] = {
                 audio: audio,
-                __id: function __id() {
-                    return "getSound('" + filename.replace(".mp3", "") + "')";
-                }
+                __id: function() {
+                    return `getSound('${filename.replace(".mp3", "")}')`;
+                },
             };
             resolve();
         };
@@ -94,7 +92,10 @@ PJSResourceCache.prototype.loadSound = function (filename) {
             resolve();
         };
 
-        audio.src = /^(http:|https:)\/\//.test(filename) ? filename : "https://cdn.kastatic.org/third_party/javascript-khansrc/live-editor/sounds/" + filename;
+        audio.src = /^(http:|https:)\/\//.test(filename)
+            ? filename
+            : "https://cdn.kastatic.org/third_party/javascript-khansrc/live-editor/sounds/" +
+                filename;
     });
 };
 

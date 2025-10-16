@@ -729,6 +729,7 @@ var Processing = function (window, document, Math) {
     // Defines system (non-SVG) font.    
     class PFont{
         constructor(name="", size=0){
+            this.name = name
             this.size = size;
             this.glyph = false;
             this.ascent = 0;

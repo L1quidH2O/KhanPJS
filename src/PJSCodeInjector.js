@@ -49,15 +49,6 @@ var _each = function (obj, iterator) {
         }
     }
 }
-var _findWhere = function (obj, attrs) {
-    // if (_.isEmpty(attrs)) return first ? null : [];
-    return obj.find(value => {
-        for (var key in attrs) {
-            if (attrs[key] !== value[key]) return false;
-        }
-        return true;
-    })
-}
 
 
 /**
@@ -1048,7 +1039,7 @@ class PJSCodeInjector {
                     var audio = document.createElement("audio");
                     var parts = filename.split("/");
 
-                    var group = _findWhere(OutputSounds[0].groups, { groupName: parts[0] });
+                    var group = OutputSounds[0].groups.find(v => v.groupName === parts[0]);
 
                     if (!group || group.sounds.indexOf(parts[1].replace(".mp3", "")) === -1) {
                         resolve();
