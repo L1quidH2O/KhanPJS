@@ -1121,16 +1121,10 @@ class PJSCodeInjector {
         if (!code) {
             return;
         }
-
-        // the top-level 'this' is empty except for this.externals, which
-        // throws this message this is how users were getting at everything
-        // from playing sounds to displaying pop-ups
-        var badProgram = "This program uses capabilities we've turned off for security reasons. Khan Academy prohibits showing external images, playing external sounds, or displaying pop-ups.";
-        var topLevelThis = "{ get externals() { throw { message: " + JSON.stringify(badProgram) + " } } }";
-
+        
         try {
             var transformedCode = this.transformCode(code, context, mutatingCalls);
-            var funcBody = "var " + this.envName + " = context;\n" + ("(function(){\n" + transformedCode + "\n}).apply(" + topLevelThis + ");");
+            var funcBody = "var " + this.envName + " = context;\n" + ("(function(){\n" + transformedCode + "\n}).apply({});");
             var func = new Function("context", funcBody);
             
             func(context);
